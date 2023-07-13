@@ -3,6 +3,7 @@ package middle
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/auth"
+	log "github.com/sirupsen/logrus"
 	"net/http"
 )
 
@@ -18,6 +19,10 @@ func AccessMiddleware() gin.HandlerFunc {
 		sa.BindKey(accountId)
 		statusCode := sa.Verify(c.Request.Context(), c.FullPath(), c.Request.Method)
 		if statusCode != http.StatusOK {
+			log.WithField("request_path", c.FullPath()).
+				WithField("request_method", c.Request.Method).
+				WithField("account_id", accountId).
+				Error("sorry you don't have enough permission to visit this endpoint")
 			c.AbortWithStatus(statusCode)
 			return
 		}
