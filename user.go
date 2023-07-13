@@ -3,6 +3,7 @@ package middle
 import (
 	"encoding/base64"
 	"encoding/json"
+	"github.com/gin-gonic/gin"
 )
 
 type LoginInfo struct {
@@ -44,16 +45,39 @@ func (l *LoginInfo) Dump(namespace string, userId string, avatar string, loginTy
 }
 
 // Load 解析登陆信息
-func (l *LoginInfo) Load(payload string) (*LoginInfo, error) {
+func (l *LoginInfo) Load(payload string) error {
 	// step 01 转换为bytes
 	sDec, err := base64.StdEncoding.DecodeString(payload)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	loginInfo := &LoginInfo{}
-	err = json.Unmarshal(sDec, loginInfo)
+	err = json.Unmarshal(sDec, l)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return loginInfo, nil
+	return nil
+}
+
+// LoadFromHeader 从登陆后的头部信息解析登陆信息
+func LoadFromHeader(c *gin.Context) LoginInfo {
+	return LoginInfo{
+		Namespace:  c.GetHeader("MerchantID"),
+		AccountId:  c.GetHeader("AccountID"),
+		UserId:     c.GetHeader("UserID"),
+		UserName:   c.GetHeader("UserName"),
+		Avatar:     c.GetHeader("Avatar"),
+		LoginType:  c.GetHeader("LoginType"),
+		LoginLevel: c.GetHeader("LoginLevel"),
+	}
+}
+
+// WriteIntoHeader 从登陆后的头部信息解析登陆信息
+func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
+	c.Request.Header.Set("MerchantID", l.Namespace)
+	c.Request.Header.Set("AccountID", l.AccountId)
+	c.Request.Header.Set("UserID", l.UserId)
+	c.Request.Header.Set("UserName", l.UserName)
+	c.Request.Header.Set("Avatar", l.Avatar)
+	c.Request.Header.Set("LoginType", l.LoginType)
+	c.Request.Header.Set("LoginLevel", l.LoginLevel)
 }

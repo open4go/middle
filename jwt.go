@@ -33,20 +33,14 @@ func JWTMiddleware(key []byte) gin.HandlerFunc {
 
 		claims := token.Claims.(*jwt.StandardClaims)
 		l := &LoginInfo{}
-		loginInfo, err := l.Load(claims.Issuer)
+		err = l.Load(claims.Issuer)
 		if err != nil {
 			log.WithField("message", "LoadLoginInfo failed").Error(err)
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 		// 写入解析客户的jwt token后得到的数据
-		c.Request.Header.Set("MerchantID", loginInfo.Namespace)
-		c.Request.Header.Set("AccountID", loginInfo.AccountId)
-		c.Request.Header.Set("UserID", loginInfo.UserId)
-		c.Request.Header.Set("UserName", loginInfo.UserName)
-		c.Request.Header.Set("Avatar", loginInfo.Avatar)
-		c.Request.Header.Set("LoginType", loginInfo.LoginType)
-		c.Request.Header.Set("LoginLevel", loginInfo.LoginLevel)
+		l.WriteIntoHeader(c)
 		// 检测角色是否有权限
 
 		c.Next()
