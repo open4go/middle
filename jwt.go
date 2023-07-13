@@ -40,9 +40,9 @@ func JWTMiddleware(key []byte) gin.HandlerFunc {
 			return
 		}
 		// 写入解析客户的jwt token后得到的数据
-		c.Request.Header.Set("MerchantId", loginInfo.Namespace)
-		c.Request.Header.Set("AccountId", loginInfo.AccountId)
-		c.Request.Header.Set("UserId", loginInfo.UserId)
+		c.Request.Header.Set("MerchantID", loginInfo.Namespace)
+		c.Request.Header.Set("AccountID", loginInfo.AccountId)
+		c.Request.Header.Set("UserID", loginInfo.UserId)
 		c.Request.Header.Set("UserName", loginInfo.UserName)
 		c.Request.Header.Set("Avatar", loginInfo.Avatar)
 		c.Request.Header.Set("LoginType", loginInfo.LoginType)
