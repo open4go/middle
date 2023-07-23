@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
-	logModel "github.com/open4go/log/model"
+	"github.com/open4go/log/model/login"
 	"github.com/r2day/auth"
 	rtime "github.com/r2day/base/time"
 	"github.com/r2day/body"
@@ -39,7 +39,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 			return
 		}
 
-		m := &logModel.Model{}
+		m := &login.Model{}
 		var jsonInstance body.SimpleSignInRequest
 		if err := c.ShouldBindBodyWith(&jsonInstance, binding.JSON); err != nil {
 			// c.JSON(http.StatusBadRequest, gin.H{"error": err.Error(), "message": "login params no right"})
