@@ -2,6 +2,7 @@ package middle
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 			logCtx.Debug("it is get method, we don't record it on database")
 			return
 		}
-
+		l := LoadFromHeader(c)
 		m := &login.Model{}
 		var jsonInstance body.SimpleSignInRequest
 		if err := c.ShouldBindBodyWith(&jsonInstance, binding.JSON); err != nil {
@@ -46,15 +47,23 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 			logCtx.Error(err)
 			return
 		}
+
 		m.ID = primitive.NewObjectID()
-		m.AccountID = c.GetHeader("AccountId")
-		m.MerchantID = c.GetHeader("MerchantId")
+		accessLevelInt, _ := strconv.Atoi(l.LoginLevel)
+		m.Meta.AccessLevel = uint(accessLevelInt)
+
+		// 基本查询条件
+
+		m.Meta.MerchantID = l.Namespace
+		m.Meta.AccountID = l.AccountId
 		// 插入身份信息
 		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
 
 		m.CreatedAt = createdAt
 		m.UpdatedAt = createdAt
-		m.ClientIP = clientIP
+
+		m.Model.
+			m.ClientIP = clientIP
 		m.RemoteIP = remoteIP
 		m.FullPath = fullPath
 		m.RespCode = respCode
