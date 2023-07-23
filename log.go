@@ -59,11 +59,10 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		// 插入身份信息
 		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
 
-		m.CreatedAt = createdAt
-		m.UpdatedAt = createdAt
+		m.Meta.CreatedAt = createdAt
+		m.Meta.UpdatedAt = createdAt
 
-		m.Model.
-			m.ClientIP = clientIP
+		m.ClientIP = clientIP
 		m.RemoteIP = remoteIP
 		m.FullPath = fullPath
 		m.RespCode = respCode
@@ -71,7 +70,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		// 写入数据库
 		// 插入记录
 		handler := m.Init(c.Request.Context(), auth.MDB, m.CollectionName())
-		mongoID, err := handler.Create(m)
+		_, err := handler.Create(m)
 		if err != nil {
 			logCtx.Error(err)
 			return
