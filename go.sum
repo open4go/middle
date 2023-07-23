@@ -57,6 +57,12 @@ github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe h1:iruDEfMl2E6f
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
 github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead h1:WRUvA2YbkUBS/xBk6HKqKi5/8J10C/VfOQzeLzSiZBY=
 github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead/go.mod h1:oKrcIbJRdHPvFkvqmdrcDbCzyQVDHGJQMwXquJUif2g=
+github.com/open4go/log v0.0.1 h1:+eW2T9gp5XZUUCfyvViD2AtSegBeH9seEIH7ZtStAu4=
+github.com/open4go/log v0.0.1/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
+github.com/open4go/log v0.0.2 h1:aXw373s2B0FXc6MOr1CMEzrNn09AcI/MyFzyyIiK8iQ=
+github.com/open4go/log v0.0.2/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
+github.com/open4go/log v0.0.3 h1:yXkN7m3Rm3/o/eDAR1vVm9skLx/mriW3gxP3x51I+Ew=
+github.com/open4go/log v0.0.3/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
 github.com/pelletier/go-toml/v2 v2.0.8 h1:0ctb6s9mE31h0/lhu+J6OPmVeDxJn+kYnJc2jZR9tGQ=
 github.com/pelletier/go-toml/v2 v2.0.8/go.mod h1:vuYfssBdrU2XDZ9bYydBu6t+6a6PYNcZljzZR9VXg+4=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
