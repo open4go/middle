@@ -67,7 +67,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		m.FullPath = fullPath
 		m.RespCode = respCode
 		m.UserID = l.UserId
-
+		m.AccountID = l.AccountId
 		// 写入数据库
 		// 插入记录
 		handler := m.Init(c.Request.Context(), auth.MDB, m.CollectionName())
