@@ -66,6 +66,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		m.RemoteIP = remoteIP
 		m.FullPath = fullPath
 		m.RespCode = respCode
+		m.UserID = l.UserId
 
 		// 写入数据库
 		// 插入记录
