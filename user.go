@@ -44,6 +44,15 @@ func (l *LoginInfo) Dump(namespace string, userId string, avatar string, loginTy
 	return sEnc, nil
 }
 
+func DumpLoginInfo(l LoginInfo) string {
+	payload, err := json.Marshal(l)
+	if err != nil {
+		return ""
+	}
+	sEnc := base64.StdEncoding.EncodeToString([]byte(payload))
+	return sEnc
+}
+
 // Load 解析登陆信息
 func (l *LoginInfo) Load(payload string) error {
 	// step 01 转换为bytes
