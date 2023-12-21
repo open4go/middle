@@ -118,7 +118,8 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		handler := m.Init(c.Request.Context(), db, m.CollectionName())
 		_, err := handler.Create(m)
 		if err != nil {
-			log.WithField("operation", m).Error("write the log failed, but keep going")
+			log.WithField("operation", m).
+				Error(err)
 		}
 		c.Next()
 	}
