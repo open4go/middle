@@ -57,12 +57,6 @@ github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe h1:iruDEfMl2E6f
 github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe/go.mod h1:wL8QJuTMNUDYhXwkmfOly8iTdp5TEcJFWZD2D7SIkUc=
 github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead h1:WRUvA2YbkUBS/xBk6HKqKi5/8J10C/VfOQzeLzSiZBY=
 github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead/go.mod h1:oKrcIbJRdHPvFkvqmdrcDbCzyQVDHGJQMwXquJUif2g=
-github.com/open4go/log v0.0.3 h1:yXkN7m3Rm3/o/eDAR1vVm9skLx/mriW3gxP3x51I+Ew=
-github.com/open4go/log v0.0.3/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
-github.com/open4go/log v0.0.4 h1:7zbc3l9sz5WKtH12JNaIU2im4ejD87owCnGhBE+BXuk=
-github.com/open4go/log v0.0.4/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
-github.com/open4go/log v0.0.5 h1:MUcqvMMiE4dTxXYJbXRHHKoSZ8XqmxvhxvUVPyt04HE=
-github.com/open4go/log v0.0.5/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
 github.com/open4go/log v0.0.6 h1:4UvnisXiXi/Q6Gr4flUOcNjJw+hmdQ5lpeaF1IG6N+U=
 github.com/open4go/log v0.0.6/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
 github.com/open4go/model v0.0.4 h1:MXftZcfyGJ1Jzui1DpPFMxOoYBKMRJxiP9LWiIASizQ=
