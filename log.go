@@ -90,6 +90,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			c.Next()
 			return
 		}
+		l := LoadFromHeader(c)
 
 		clientIP := c.ClientIP()
 		remoteIP := c.RemoteIP()
@@ -99,10 +100,12 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		m := &operation.Model{}
 		// 基本查询条件
 		m.ID = primitive.NewObjectID()
+		// 基本查询条件
 
+		m.Meta.MerchantID = l.Namespace
+		m.Meta.AccountID = l.AccountId
 		// 插入身份信息
 		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
-		l := LoadFromHeader(c)
 
 		m.Meta.CreatedAt = createdAt
 		m.Meta.UpdatedAt = createdAt
@@ -112,6 +115,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		m.Method = method // 对应的 新增/修改/删除
 		m.TargetID = c.Param("_id")
 		m.Operator = l.UserName
+		m.AccountID = l.AccountId
 
 		// 写入数据库
 		// 插入记录
