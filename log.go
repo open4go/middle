@@ -115,7 +115,8 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 
 		// 写入数据库
 		// 插入记录
-		_, err := m.Create(c.Request.Context())
+		handler := m.Init(c.Request.Context(), db, m.CollectionName())
+		_, err := handler.Create(m)
 		if err != nil {
 			log.WithField("operation", m).Error("write the log failed, but keep going")
 		}
