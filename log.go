@@ -116,6 +116,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		m.TargetID = c.Param("_id")
 		m.Operator = l.UserName
 		m.AccountID = l.AccountId
+		m.Timestamp = uint64(time.Now().Unix())
 
 		// 写入数据库
 		// 插入记录
@@ -126,5 +127,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 				Error(err)
 		}
 		c.Next()
+
+		// TODO 如果是新增/需要在新增后拿到targetId
 	}
 }

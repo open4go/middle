@@ -59,6 +59,8 @@ github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead h1:WRUvA2YbkUBS/xBk6H
 github.com/open4go/auth v0.0.0-20230712115531-eb6e6e052ead/go.mod h1:oKrcIbJRdHPvFkvqmdrcDbCzyQVDHGJQMwXquJUif2g=
 github.com/open4go/log v0.0.6 h1:4UvnisXiXi/Q6Gr4flUOcNjJw+hmdQ5lpeaF1IG6N+U=
 github.com/open4go/log v0.0.6/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
+github.com/open4go/log v0.0.7 h1:fTGghClGMnjknRYYwqoXyT8SOQDuJIj0V3x3pYmr5UI=
+github.com/open4go/log v0.0.7/go.mod h1:uUvKGphJecXmF+RZZ6VXKNLIYBAbUmYe6AvokdTmg7I=
 github.com/open4go/model v0.0.6 h1:04JU37WGE8ZSB/49+Ov0PhHFTJirxs0gwn44wl3fHtU=
 github.com/open4go/model v0.0.6/go.mod h1:5BhWFnfhq6PWuwk+qckuF5231/A2/TBOX9Lm/+RTfio=
 github.com/pelletier/go-toml/v2 v2.0.8 h1:0ctb6s9mE31h0/lhu+J6OPmVeDxJn+kYnJc2jZR9tGQ=
