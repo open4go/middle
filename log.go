@@ -104,11 +104,10 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 
 		saveLog(c, l, clientIP,
 			remoteIP, fullPath, method, db)
-
 		c.Next()
 
 		// TODO 如果是新增/需要在新增后拿到targetId
-		log.WithField("id", c.GetHeader("id")).
+		log.WithField("id", c.GetHeader("TargetId")).
 			Info("after api call done")
 	}
 }
