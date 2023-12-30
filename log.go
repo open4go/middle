@@ -78,7 +78,6 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 			logCtx.Error(err)
 			return
 		}
-
 	}
 }
 
@@ -106,9 +105,10 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			remoteIP, fullPath, method, db)
 		c.Next()
 
+		targetId := c.Request.Header.Get("TargetId")
 		// TODO 如果是新增/需要在新增后拿到targetId
-		log.WithField("id", c.GetHeader("TargetId")).
-			Info("after api call done")
+		log.WithField("id", targetId).
+			Debug("after call done")
 	}
 }
 
