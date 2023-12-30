@@ -1,7 +1,6 @@
 package middle
 
 import (
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -12,7 +11,7 @@ import (
 	"github.com/open4go/log/model/operation"
 	rtime "github.com/r2day/base/time"
 	"github.com/r2day/body"
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -22,6 +21,9 @@ import (
 func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
+		// Retrieve the Logrus logger from the context
+		logger, _ := c.Get("log")
+		log := logger.(*logrus.Entry)
 
 		// 先执行登陆操作
 		c.Next()
@@ -84,9 +86,13 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
+		// Retrieve the Logrus logger from the context
+		logger, _ := c.Get("log")
+		log := logger.(*logrus.Entry)
+
 		method := c.Request.Method
 		if c.Request.Method == http.MethodGet {
-			fmt.Println("it is get method ,no data change so don't need to record it by default")
+			log.Info("it is get method ,no data change so don't need to record it by default")
 			c.Next()
 			return
 		}
@@ -96,39 +102,51 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		remoteIP := c.RemoteIP()
 		fullPath := c.FullPath()
 
-		// 声明表
-		m := &operation.Model{}
-		// 基本查询条件
-		m.ID = primitive.NewObjectID()
-		// 基本查询条件
+		saveLog(c, l, clientIP,
+			remoteIP, fullPath, method, db)
 
-		m.Meta.MerchantID = l.Namespace
-		m.Meta.AccountID = l.AccountId
-		// 插入身份信息
-		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
-
-		m.Meta.CreatedAt = createdAt
-		m.Meta.UpdatedAt = createdAt
-		m.ClientIP = clientIP
-		m.RemoteIP = remoteIP
-		m.FullPath = fullPath
-		m.Method = method // 对应的 新增/修改/删除
-		m.TargetID = c.Param("_id")
-		m.Operator = l.UserName
-		m.AccountID = l.AccountId
-		m.Timestamp = uint64(time.Now().Unix())
-
-		// 写入数据库
-		// 插入记录
-		handler := m.Init(c.Request.Context(), db, m.CollectionName())
-		_, err := handler.Create(m)
-		if err != nil {
-			log.WithField("operation", m).
-				Error(err)
-		}
 		c.Next()
 
 		// TODO 如果是新增/需要在新增后拿到targetId
-		//log.WithField("id", c.)
+		log.WithField("id", c.GetHeader("id")).
+			Info("after api call done")
+	}
+}
+
+func saveLog(c *gin.Context, l LoginInfo, clientIP string,
+	remoteIP string, fullPath string, method string, db *mongo.Database) {
+	// Retrieve the Logrus logger from the context
+	logger, _ := c.Get("log")
+	log := logger.(*logrus.Entry)
+
+	// 声明表
+	m := &operation.Model{}
+	// 基本查询条件
+	m.ID = primitive.NewObjectID()
+	// 基本查询条件
+
+	m.Meta.MerchantID = l.Namespace
+	m.Meta.AccountID = l.AccountId
+	// 插入身份信息
+	createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
+
+	m.Meta.CreatedAt = createdAt
+	m.Meta.UpdatedAt = createdAt
+	m.ClientIP = clientIP
+	m.RemoteIP = remoteIP
+	m.FullPath = fullPath
+	m.Method = method // 对应的 新增/修改/删除
+	m.TargetID = c.Param("_id")
+	m.Operator = l.UserName
+	m.AccountID = l.AccountId
+	m.Timestamp = uint64(time.Now().Unix())
+
+	// 写入数据库
+	// 插入记录
+	handler := m.Init(c.Request.Context(), db, m.CollectionName())
+	_, err := handler.Create(m)
+	if err != nil {
+		log.WithField("operation", m).
+			Error(err)
 	}
 }
