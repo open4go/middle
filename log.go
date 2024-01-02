@@ -95,25 +95,45 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			c.Next()
 			return
 		}
-		l := LoadFromHeader(c)
 
-		clientIP := c.ClientIP()
-		remoteIP := c.RemoteIP()
-		fullPath := c.FullPath()
+		if c.Request.Method == http.MethodPut || c.Request.Method == http.MethodDelete {
+			l := LoadFromHeader(c)
 
-		saveLog(c, l, clientIP,
-			remoteIP, fullPath, method, db)
+			clientIP := c.ClientIP()
+			remoteIP := c.RemoteIP()
+			fullPath := c.FullPath()
+			targetId := c.Param("_id")
+			saveLog(c, l, clientIP,
+				remoteIP, fullPath, method, targetId, db)
+		}
+
 		c.Next()
 
-		targetId := c.Request.Header.Get("TargetId")
-		// TODO 如果是新增/需要在新增后拿到targetId
-		log.WithField("id", targetId).
-			Debug("after call done")
+		// 创建对象需要执行完成后再记录操作日志
+		// TODO 其实应该都在执行完毕后记录才是合理的
+		if c.Request.Method == http.MethodPost {
+			l := LoadFromHeader(c)
+
+			clientIP := c.ClientIP()
+			remoteIP := c.RemoteIP()
+			fullPath := c.FullPath()
+			// Accessing response headers set by the handler
+			headers := c.Writer.Header()
+
+			// Example: Get the value of a specific header
+			targetId := headers.Get("TargetId")
+			// TODO 如果是新增/需要在新增后拿到targetId
+			log.WithField("id", targetId).
+				Debug("after call done")
+
+			saveLog(c, l, clientIP,
+				remoteIP, fullPath, method, targetId, db)
+		}
 	}
 }
 
 func saveLog(c *gin.Context, l LoginInfo, clientIP string,
-	remoteIP string, fullPath string, method string, db *mongo.Database) {
+	remoteIP string, fullPath string, method string, targetId string, db *mongo.Database) {
 	// Retrieve the Logrus logger from the context
 	logger, _ := c.Get("log")
 	log := logger.(*logrus.Entry)
@@ -135,7 +155,7 @@ func saveLog(c *gin.Context, l LoginInfo, clientIP string,
 	m.RemoteIP = remoteIP
 	m.FullPath = fullPath
 	m.Method = method // 对应的 新增/修改/删除
-	m.TargetID = c.Param("_id")
+	m.TargetID = targetId
 	m.Operator = l.UserName
 	m.AccountID = l.AccountId
 	m.Timestamp = uint64(time.Now().Unix())
