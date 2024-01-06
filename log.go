@@ -28,9 +28,18 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		// 先执行登陆操作
 		c.Next()
 		// 获取用户登陆信息
-		clientIP := c.ClientIP()
+		//clientIP := c.ClientIP()
 		remoteIP := c.RemoteIP()
 		fullPath := c.FullPath()
+		// Retrieve remote IP from trusted headers
+		clientIP := c.Request.Header.Get("X-Real-IP") // For Nginx proxy setups
+		if clientIP == "" {
+			clientIP = c.Request.Header.Get("X-Forwarded-For") // For other proxy setups
+		}
+		if clientIP == "" {
+			clientIP = c.ClientIP() // If all else fails, fallback to c.ClientIP()
+		}
+
 		respCode := c.Writer.Status()
 
 		logCtx := log.WithField("client_id", clientIP).

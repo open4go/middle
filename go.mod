@@ -6,7 +6,7 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.1.2
-	github.com/open4go/auth v0.1.7
+	github.com/open4go/auth v0.1.8-0.20240106054322-a03ed0019c48
 	github.com/open4go/log v0.0.8
 	github.com/r2day/base v1.6.7
 	github.com/r2day/body v0.0.1
@@ -69,3 +69,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+//replace github.com/open4go/auth => ../../open4go/auth

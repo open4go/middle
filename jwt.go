@@ -1,14 +1,16 @@
 package middle
 
 import (
+	"errors"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	log "github.com/sirupsen/logrus"
+	"github.com/open4go/log"
 	"net/http"
 )
 
 const (
-	SignOutPath = "v1/auth/user/signout"
+	SignOutPath = "v1/system/auth/user/signout"
 )
 
 // JWTMiddleware 验证cookie并且将解析出来的账号
@@ -19,46 +21,69 @@ const (
 func JWTMiddleware(key []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		reqPath := c.FullPath()
-		if SignOutPath == reqPath {
-			if isLogin(c, key) {
-				c.Next()
-			} else {
-				c.AbortWithStatus(http.StatusAlreadyReported)
+		if reqPath == SignOutPath {
+			if checkAuth(c, key) != http.StatusOK {
+				c.AbortWithStatus(http.StatusForbidden)
+				return
 			}
 		} else {
-			if isLogin(c, key) {
-				c.Next()
-			} else {
+			if checkAuth(c, key) != http.StatusOK {
 				c.AbortWithStatus(http.StatusForbidden)
+				return
 			}
 		}
+		c.Next()
 	}
 }
 
-func isLogin(c *gin.Context, key []byte) bool {
+func checkAuth(c *gin.Context, key []byte) int {
+	// Retrieve JWT token from the "jwt" cookie
 	cookie, err := c.Cookie("jwt")
-	if cookie == "" {
-		log.Error("cookie name as jwt no found")
-		return false
+	if err != nil || cookie == "" {
+		log.Log().WithError(err).Error("Failed to retrieve JWT token from cookie")
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return http.StatusUnauthorized
 	}
 
-	token, err := jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+	// Parse JWT token with claims
+	token, err := parseJWTToken(cookie, key)
+	if err != nil {
+		log.Log().WithError(err).Error("Failed to parse JWT token")
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return http.StatusUnauthorized
+	}
+
+	// Extract claims and load them into LoginInfo struct
+	loginInfo, err := extractClaims(token)
+	if err != nil {
+		log.Log().WithError(err).Error("Failed to extract claims")
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return http.StatusUnauthorized
+	}
+
+	// Write parsed data into the header
+	loginInfo.WriteIntoHeader(c)
+
+	return http.StatusOK
+}
+
+func parseJWTToken(cookie string, key []byte) (*jwt.Token, error) {
+	return jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
 		return key, nil
 	})
+}
 
-	if err != nil {
-		log.WithField("message", "parse claims failed").Error(err)
-		return false
+func extractClaims(token *jwt.Token) (*LoginInfo, error) {
+	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if !ok {
+		return nil, errors.New("invalid token claims")
 	}
 
-	claims := token.Claims.(*jwt.StandardClaims)
-	l := &LoginInfo{}
-	err = l.Load(claims.Issuer)
-	if err != nil {
-		log.WithField("message", "LoadLoginInfo failed").Error(err)
-		return false
+	// Load claims into LoginInfo struct
+	loginInfo := &LoginInfo{}
+	if err := loginInfo.Load(claims.Issuer); err != nil {
+		return nil, fmt.Errorf("failed to load claims into LoginInfo: %w", err)
 	}
-	// 写入解析客户的jwt token后得到的数据
-	l.WriteIntoHeader(c)
-	return true
+
+	return loginInfo, nil
 }
