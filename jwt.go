@@ -40,7 +40,8 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Retrieve JWT token from the "jwt" cookie
 	cookie, err := c.Cookie("jwt")
 	if err != nil || cookie == "" {
-		log.Log().WithError(err).Error("Failed to retrieve JWT token from cookie")
+		log.Log().
+			WithError(err).Error("Failed to retrieve JWT token from cookie")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
