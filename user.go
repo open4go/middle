@@ -100,7 +100,8 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 
 // WriteIntoHeader 从登陆后的头部信息解析登陆信息
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
-	c.Request.Header.Set("MerchantID", l.Namespace)
+	c.Request.Header.Set("Namespace", l.Namespace)
+	c.Request.Header.Set("MerchantID", l.MerchantID)
 	c.Request.Header.Set("AccountID", l.AccountID)
 	c.Request.Header.Set("UserID", l.UserID)
 	c.Request.Header.Set("UserName", l.UserName)
