@@ -1,9 +1,11 @@
 package middle
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
+	"github.com/open4go/model"
 )
 
 type LoginInfo struct {
@@ -89,4 +91,12 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Avatar", l.Avatar)
 	c.Request.Header.Set("LoginType", l.LoginType)
 	c.Request.Header.Set("LoginLevel", l.LoginLevel)
+
+	// 写入context
+	// 在请求上下文中设置值
+	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountId)
+	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
+	ctx = context.WithValue(ctx, model.MerchantKey, l.Namespace)
+	ctx = context.WithValue(ctx, model.OperatorKey, l.UserId)
+	c.Request = c.Request.WithContext(ctx)
 }
