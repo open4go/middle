@@ -86,7 +86,7 @@ func (l *LoginInfo) Load(payload string) error {
 // LoadFromHeader 从登陆后的头部信息解析登陆信息
 func LoadFromHeader(c *gin.Context) LoginInfo {
 	return LoginInfo{
-		Namespace:  c.GetHeader("MerchantID"),
+		Namespace:  c.GetHeader("Namespace"),
 		AccountID:  c.GetHeader("AccountID"),
 		UserID:     c.GetHeader("UserID"),
 		Phone:      c.GetHeader("Phone"),
