@@ -6,16 +6,21 @@ import (
 	"encoding/json"
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/model"
+	"os"
 )
 
 type LoginInfo struct {
 	// 命名空间
 	// 可是商户号
 	Namespace string `json:"namespace"`
+	// 商户号
+	MerchantID string `json:"merchant-id"  bson:"merchant"`
 	// 账号id
-	AccountId string `json:"account_id"  bson:"account_id"`
+	AccountID string `json:"account_id"  bson:"account_id"`
 	// 可以是手机号
-	UserId string `json:"user_id"  bson:"user_id"`
+	Phone string `json:"phone"  bson:"phone"`
+	// mongoID
+	UserID string `json:"user_id"  bson:"user_id"`
 	// 用户名
 	UserName string `json:"user_name"  bson:"user_name"`
 	// Avatar 用户头像
@@ -27,12 +32,21 @@ type LoginInfo struct {
 }
 
 // Dump 登陆信息
-func (l *LoginInfo) Dump(namespace string, userId string, avatar string, loginType string, userName string, accountId string, loginLevel string) (string, error) {
+func (l *LoginInfo) Dump(merchant string,
+	userId string,
+	phone string,
+	avatar string,
+	loginType string,
+	userName string,
+	accountId string,
+	loginLevel string) (string, error) {
 	// step 01 转换为json
 	loginInfo := LoginInfo{
-		Namespace:  namespace,
-		AccountId:  accountId,
-		UserId:     userId,
+		Namespace:  os.Getenv(model.NamespaceKey),
+		MerchantID: merchant,
+		AccountID:  accountId,
+		UserID:     userId,
+		Phone:      phone,
 		UserName:   userName,
 		Avatar:     avatar,
 		LoginType:  loginType,
@@ -73,8 +87,10 @@ func (l *LoginInfo) Load(payload string) error {
 func LoadFromHeader(c *gin.Context) LoginInfo {
 	return LoginInfo{
 		Namespace:  c.GetHeader("MerchantID"),
-		AccountId:  c.GetHeader("AccountID"),
-		UserId:     c.GetHeader("UserID"),
+		AccountID:  c.GetHeader("AccountID"),
+		UserID:     c.GetHeader("UserID"),
+		Phone:      c.GetHeader("Phone"),
+		MerchantID: c.GetHeader("MerchantID"),
 		UserName:   c.GetHeader("UserName"),
 		Avatar:     c.GetHeader("Avatar"),
 		LoginType:  c.GetHeader("LoginType"),
@@ -85,8 +101,8 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 // WriteIntoHeader 从登陆后的头部信息解析登陆信息
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("MerchantID", l.Namespace)
-	c.Request.Header.Set("AccountID", l.AccountId)
-	c.Request.Header.Set("UserID", l.UserId)
+	c.Request.Header.Set("AccountID", l.AccountID)
+	c.Request.Header.Set("UserID", l.UserID)
 	c.Request.Header.Set("UserName", l.UserName)
 	c.Request.Header.Set("Avatar", l.Avatar)
 	c.Request.Header.Set("LoginType", l.LoginType)
@@ -94,9 +110,9 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 
 	// 写入context
 	// 在请求上下文中设置值
-	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountId)
+	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
 	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
 	ctx = context.WithValue(ctx, model.MerchantKey, l.Namespace)
-	ctx = context.WithValue(ctx, model.OperatorKey, l.UserId)
+	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
 	c.Request = c.Request.WithContext(ctx)
 }
