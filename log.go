@@ -48,7 +48,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		m.Meta.AccessLevel = uint(accessLevelInt)
 
 		m.Meta.MerchantID = l.Namespace
-		m.Meta.AccountID = l.AccountId
+		m.Meta.AccountID = l.AccountID
 
 		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
 		m.Meta.CreatedAt = createdAt
@@ -58,8 +58,8 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		m.RemoteIP = remoteIP
 		m.FullPath = c.FullPath()
 		m.RespCode = c.Writer.Status()
-		m.UserID = l.UserId
-		m.AccountID = l.AccountId
+		m.UserID = l.UserID
+		m.AccountID = l.AccountID
 
 		handler := m.Init(c.Request.Context(), db, m.CollectionName())
 		_, err := handler.Create(m)
@@ -126,7 +126,7 @@ func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method, 
 	m := &operation.Model{}
 	m.ID = primitive.NewObjectID()
 	m.Meta.MerchantID = l.Namespace
-	m.Meta.AccountID = l.AccountId
+	m.Meta.AccountID = l.AccountID
 
 	createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
 	m.Meta.CreatedAt = createdAt
@@ -138,7 +138,7 @@ func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method, 
 	m.Method = method
 	m.TargetID = targetID
 	m.Operator = l.UserName
-	m.AccountID = l.AccountId
+	m.AccountID = l.AccountID
 	m.Timestamp = uint64(time.Now().Unix())
 
 	handler := m.Init(c.Request.Context(), db, m.CollectionName())
