@@ -14,14 +14,14 @@ import (
 // 通过hget api/path/ role boolean
 func AccessMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		accountId := c.GetHeader("AccountID")
+		userID := c.GetHeader("UserID")
 		sa := auth.NewRBAM()
-		sa.BindKey(accountId)
+		sa.BindKey(userID)
 		statusCode := sa.Verify(c.Request.Context(), c.FullPath(), c.Request.Method)
 		if statusCode != http.StatusOK {
 			log.WithField("request_path", c.FullPath()).
 				WithField("request_method", c.Request.Method).
-				WithField("account_id", accountId).
+				WithField("userID", userID).
 				Error("sorry you don't have enough permission to visit this endpoint")
 			c.AbortWithStatus(statusCode)
 			return
