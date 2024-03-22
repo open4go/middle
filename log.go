@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin/binding"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -82,6 +83,8 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			return
 		}
 
+		c.Next()
+
 		if method == http.MethodPut || method == http.MethodDelete {
 			l := LoadFromHeader(c)
 
@@ -95,11 +98,11 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			}
 
 			fullPath := c.FullPath()
+			// 移除 "/:_id"
+			fullPath = strings.Replace(fullPath, "/:_id", "", -1)
 			targetID := c.Param("_id")
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
 		}
-
-		c.Next()
 
 		if method == http.MethodPost {
 			l := LoadFromHeader(c)
