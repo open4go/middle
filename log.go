@@ -97,9 +97,9 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			fullPath := c.FullPath()
 			targetID := c.Param("_id")
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
+			c.Next()
+			return
 		}
-
-		c.Next()
 
 		if method == http.MethodPost {
 			l := LoadFromHeader(c)
@@ -118,19 +118,21 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			targetID := headers.Get("TargetId")
 
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
+			c.Next()
+			return
 		}
 	}
 }
 
 func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method, targetID string, db *mongo.Database) {
 	m := &operation.Model{}
-	m.ID = primitive.NewObjectID()
-	m.Meta.MerchantID = l.Namespace
-	m.Meta.AccountID = l.AccountID
-
-	createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
-	m.Meta.CreatedAt = createdAt
-	m.Meta.UpdatedAt = createdAt
+	//m.ID = primitive.NewObjectID()
+	//m.Meta.MerchantID = l.Namespace
+	//m.Meta.AccountID = l.AccountID
+	//
+	//createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
+	//m.Meta.CreatedAt = createdAt
+	//m.Meta.UpdatedAt = createdAt
 
 	m.ClientIP = clientIP
 	m.RemoteIP = remoteIP
