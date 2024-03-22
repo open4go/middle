@@ -114,9 +114,16 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			}
 
 			fullPath := c.FullPath()
-			//headers := c.Writer.Header()
-			//targetID := headers.Get("TargetId")
-			targetID := c.Value("TargetId")
+			headers := c.Writer.Header()
+			targetID := headers.Get("TargetId")
+
+			if targetID == "" {
+				if value, ok := c.Value("TargetId").(string); ok {
+					targetID = value
+				} else {
+					// 处理无法从上下文中获取 "TargetId" 的情况
+				}
+			}
 			log.Log().
 				WithField("clientIP", clientIP).
 				WithField("remoteIP", remoteIP).
@@ -129,28 +136,21 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 	}
 }
 
-func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method string, targetID any, db *mongo.Database) {
+func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method string, targetID string, db *mongo.Database) {
 	m := &operation.Model{}
-	//m.ID = primitive.NewObjectID()
-	//m.Meta.MerchantID = l.Namespace
-	//m.Meta.AccountID = l.AccountID
-	//
-	//createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
-	//m.Meta.CreatedAt = createdAt
-	//m.Meta.UpdatedAt = createdAt
-
 	m.ClientIP = clientIP
 	m.RemoteIP = remoteIP
 	m.FullPath = fullPath
 	m.Method = method
-	m.TargetID = targetID.(string)
+	m.TargetID = targetID
 	m.Operator = l.UserName
 	m.AccountID = l.AccountID
 	m.Timestamp = uint64(time.Now().Unix())
 
 	handler := m.Init(c.Request.Context(), db, m.CollectionName())
-	_, err := handler.Create(m)
+	id, err := handler.Create(m)
 	if err != nil {
 		log.Log().Error(err)
 	}
+	log.Log().WithField("id", id).Debug("after create done")
 }
