@@ -114,15 +114,22 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			}
 
 			fullPath := c.FullPath()
-			headers := c.Writer.Header()
-			targetID := headers.Get("TargetId")
-
+			//headers := c.Writer.Header()
+			//targetID := headers.Get("TargetId")
+			targetID := c.Value("TargetId")
+			log.Log().
+				WithField("clientIP", clientIP).
+				WithField("remoteIP", remoteIP).
+				WithField("fullPath", fullPath).
+				WithField("method", method).
+				WithField("targetID", targetID).
+				Debug("before save")
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
 		}
 	}
 }
 
-func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method, targetID string, db *mongo.Database) {
+func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method string, targetID any, db *mongo.Database) {
 	m := &operation.Model{}
 	//m.ID = primitive.NewObjectID()
 	//m.Meta.MerchantID = l.Namespace
@@ -136,7 +143,7 @@ func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method, 
 	m.RemoteIP = remoteIP
 	m.FullPath = fullPath
 	m.Method = method
-	m.TargetID = targetID
+	m.TargetID = targetID.(string)
 	m.Operator = l.UserName
 	m.AccountID = l.AccountID
 	m.Timestamp = uint64(time.Now().Unix())
