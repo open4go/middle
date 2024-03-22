@@ -97,9 +97,9 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			fullPath := c.FullPath()
 			targetID := c.Param("_id")
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
-			c.Next()
-			return
 		}
+
+		c.Next()
 
 		if method == http.MethodPost {
 			l := LoadFromHeader(c)
@@ -118,8 +118,6 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			targetID := headers.Get("TargetId")
 
 			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
-			c.Next()
-			return
 		}
 	}
 }
