@@ -3,7 +3,6 @@ package middle
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
-	"github.com/r2day/db"
 	"net/http"
 )
 
@@ -39,7 +38,7 @@ func VerifyTokenMiddleware(key []byte) gin.HandlerFunc {
 }
 
 func readCacheByToken(c *gin.Context, tokenKeyName string, subKey string) error {
-	value, err := db.RDB.HGet(c.Request.Context(), tokenKeyName, subKey).Result()
+	value, err := GetRedisMiddleHandler().HGet(c.Request.Context(), tokenKeyName, subKey).Result()
 	if err != nil {
 		log.Log().WithField("subKey", subKey).Error(err)
 		return err
