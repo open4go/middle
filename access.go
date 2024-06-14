@@ -15,7 +15,7 @@ import (
 func AccessMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID := c.GetHeader("UserID")
-		sa := auth.NewRBAM()
+		sa := auth.NewRBAM(c.Request.Context())
 		sa.BindKey(userID)
 		statusCode := sa.Verify(c.Request.Context(), c.FullPath(), c.Request.Method)
 		if statusCode != http.StatusOK {
