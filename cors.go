@@ -10,7 +10,6 @@ import (
 // CORSMiddleware 跨站请求
 func CORSMiddleware(host string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-
 		// 跨站请求必要的header
 		c.Writer.Header().Set("Access-Control-Allow-Origin", host)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
@@ -20,9 +19,12 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 
 		// 添加必要的信息便于日志追踪
 		traceID := generateTraceID()
-		c.Request.WithContext(context.WithValue(c.Request.Context(), "traceid", traceID))
+		ctx := context.WithValue(c.Request.Context(), "traceid", traceID)
 		ip := c.ClientIP()
-		c.Request.WithContext(context.WithValue(c.Request.Context(), "ip", ip))
+		ctx = context.WithValue(ctx, "ip", ip)
+
+		// 更新请求上下文
+		c.Request = c.Request.WithContext(ctx)
 
 		if c.Request.Method == "OPTIONS" {
 			c.AbortWithStatus(204)
