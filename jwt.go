@@ -40,7 +40,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Retrieve JWT token from the "jwt" cookie
 	cookie, err := c.Cookie("jwt")
 	if err != nil || cookie == "" {
-		log.Log().
+		log.Log(c.Request.Context()).
 			WithError(err).Error("Failed to retrieve JWT token from cookie")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
@@ -49,7 +49,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Parse JWT token with claims
 	token, err := parseJWTToken(cookie, key)
 	if err != nil {
-		log.Log().WithError(err).Error("Failed to parse JWT token")
+		log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -57,7 +57,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Extract claims and load them into LoginInfo struct
 	loginInfo, err := extractClaims(token)
 	if err != nil {
-		log.Log().WithError(err).Error("Failed to extract claims")
+		log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}

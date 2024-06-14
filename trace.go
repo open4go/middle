@@ -21,7 +21,7 @@ func TraceMiddleware() gin.HandlerFunc {
 		c.Header("X-Request-ID", requestID)
 
 		// Set the request ID in the Logrus logger's fields
-		logger := log.Log().WithFields(
+		logger := log.Log(c.Request.Context()).WithFields(
 			logrus.Fields{"request_id": requestID})
 		c.Set("log", logger)
 

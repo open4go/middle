@@ -32,7 +32,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		}
 
 		if c.Request.Method == http.MethodGet && skipViewLog {
-			log.Log().Debug("GET method, not logged to database")
+			log.Log(c.Request.Context()).Debug("GET method, not logged to database")
 			return
 		}
 
@@ -40,7 +40,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		m := &login.Model{}
 		var jsonInstance body.SimpleSignInRequest
 		if err := c.ShouldBindBodyWith(&jsonInstance, binding.JSON); err != nil {
-			log.Log().Error(err)
+			log.Log(c.Request.Context()).Error(err)
 			return
 		}
 
@@ -65,7 +65,7 @@ func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 		handler := m.Init(c.Request.Context(), db, m.CollectionName())
 		_, err := handler.Create(m)
 		if err != nil {
-			log.Log().Error(err)
+			log.Log(c.Request.Context()).Error(err)
 			return
 		}
 	}
@@ -77,7 +77,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 		method := c.Request.Method
 
 		if method == http.MethodGet {
-			log.Log().WithField("method", method).
+			log.Log(c.Request.Context()).WithField("method", method).
 				Debug("GET method, not logged to database by default")
 			c.Next()
 			return
@@ -127,7 +127,7 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 					// 处理无法从上下文中获取 "TargetId" 的情况
 				}
 			}
-			log.Log().
+			log.Log(c.Request.Context()).
 				WithField("clientIP", clientIP).
 				WithField("remoteIP", remoteIP).
 				WithField("fullPath", fullPath).
@@ -153,7 +153,7 @@ func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method s
 	handler := m.Init(c.Request.Context(), db, m.CollectionName())
 	id, err := handler.Create(m)
 	if err != nil {
-		log.Log().Error(err)
+		log.Log(c.Request.Context()).Error(err)
 	}
-	log.Log().WithField("id", id).Debug("after create done")
+	log.Log(c.Request.Context()).WithField("id", id).Debug("after create done")
 }

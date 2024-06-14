@@ -14,7 +14,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			log.Log().Error("authorization header is required")
+			log.Log(c.Request.Context()).Error("authorization header is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header is required"})
 			c.Abort()
 			return
@@ -22,7 +22,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			log.Log().WithField("authHeader", authHeader).
+			log.Log(c.Request.Context()).WithField("authHeader", authHeader).
 				Error("authorization header is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
 			c.Abort()
@@ -33,7 +33,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		token, claims, err := parseToken(tokenString, jwtSecret)
 		if err != nil || !token.Valid {
-			log.Log().WithField("authHeader", authHeader).
+			log.Log(c.Request.Context()).WithField("authHeader", authHeader).
 				WithField("token", token).
 				Error("authorization header is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})

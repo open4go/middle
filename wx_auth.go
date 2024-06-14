@@ -28,7 +28,7 @@ func VerifyTokenMiddleware(key []byte) gin.HandlerFunc {
 		for _, subKey := range WxLoginFields {
 			err := readCacheByToken(c, hashParentKey, subKey)
 			if err != nil {
-				log.Log().WithField("subKey", subKey).Error(err)
+				log.Log(c.Request.Context()).WithField("subKey", subKey).Error(err)
 				c.AbortWithStatus(http.StatusForbidden)
 				return
 			}
@@ -38,13 +38,13 @@ func VerifyTokenMiddleware(key []byte) gin.HandlerFunc {
 }
 
 func readCacheByToken(c *gin.Context, tokenKeyName string, subKey string) error {
-	value, err := GetRedisMiddleHandler().HGet(c.Request.Context(), tokenKeyName, subKey).Result()
+	value, err := GetRedisMiddleHandler(c.Request.Context()).HGet(c.Request.Context(), tokenKeyName, subKey).Result()
 	if err != nil {
-		log.Log().WithField("subKey", subKey).Error(err)
+		log.Log(c.Request.Context()).WithField("subKey", subKey).Error(err)
 		return err
 	}
 	if value == "" {
-		log.Log().WithField("subKey", subKey).
+		log.Log(c.Request.Context()).WithField("subKey", subKey).
 			WithField("value", value).Error(err)
 		return err
 	}
