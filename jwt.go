@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	SignOutPath = "v1/system/auth/user/signout"
+	SignOutPath = "v1/system/auth/signout"
 )
 
 // JWTMiddleware 验证cookie并且将解析出来的账号
