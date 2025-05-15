@@ -43,6 +43,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		// 将 claims 保存到上下文
 		c.Set("claims", claims)
+		c.Set("accountId", claims.Subject)
 		c.Next()
 	}
 }

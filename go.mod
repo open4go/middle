@@ -6,7 +6,6 @@ require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.1.2
-	github.com/open4go/auth v0.2.26
 	github.com/open4go/db v0.0.6
 	github.com/open4go/log v0.0.12
 	github.com/open4go/model v0.0.15
@@ -55,15 +54,12 @@ require (
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/morikuni/aec v1.0.0 // indirect
 	github.com/open4go/r3time v0.0.3 // indirect
-	github.com/open4go/req5rsp v0.1.30 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.8 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
-	github.com/r2day/collections v1.1.3 // indirect
 	github.com/r2day/db v0.3.5 // indirect
-	github.com/r2day/rest v0.2.8 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
