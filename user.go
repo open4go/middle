@@ -101,7 +101,16 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 // WriteIntoHeader 从登陆后的头部信息解析登陆信息
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
-	c.Request.Header.Set("MerchantID", l.MerchantID)
+
+	tenantId := c.Request.Header.Get("X-Tenant-ID")
+	if tenantId != "" {
+		// 如果存在租户id 则当前是需要传递其作为商户id 并且作为数据隔离
+		c.Request.Header.Set("MerchantID", tenantId)
+	} else {
+		tenantId = l.MerchantID
+		// 后续传递默认root 或者 * 标识超级管理员查看所有租户数据
+		c.Request.Header.Set("MerchantID", l.MerchantID)
+	}
 	c.Request.Header.Set("AccountID", l.AccountID)
 	c.Request.Header.Set("UserID", l.UserID)
 	c.Request.Header.Set("UserName", l.UserName)
@@ -113,7 +122,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	// 在请求上下文中设置值
 	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
 	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
-	ctx = context.WithValue(ctx, model.MerchantKey, l.Namespace)
+	ctx = context.WithValue(ctx, model.MerchantKey, tenantId)
 	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
 	c.Request = c.Request.WithContext(ctx)
 }
