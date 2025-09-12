@@ -4,9 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"github.com/open4go/log"
 	"github.com/open4go/model"
 	"os"
+)
+
+const (
+	CacheMerchant2Tenant = "cache:merchant2tenant"
 )
 
 type LoginInfo struct {
@@ -106,11 +112,25 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	if tenantId != "" {
 		// 如果存在租户id 则当前是需要传递其作为商户id 并且作为数据隔离
 		c.Request.Header.Set("MerchantID", tenantId)
+
+		// 如果网关没有获取到，那么还需解析看看后台是否是超级super 可以查看所有商户到信息
+		merchantId := c.Request.Header.Get("X-Merchant-ID")
+		// 如果id不为空
+		if merchantId != "" {
+			// 查询数据库解析出商户tenantId
+			rs, err := GetRedisCacheHandler(c.Request.Context()).Get(c.Request.Context(), fmt.Sprintf("%s:%s", CacheMerchant2Tenant, merchantId)).Result()
+			if err != nil {
+				log.Log(c.Request.Context()).Error(err)
+			}
+			tenantId = rs
+		}
+
 	} else {
 		tenantId = l.MerchantID
 		// 后续传递默认root 或者 * 标识超级管理员查看所有租户数据
 		c.Request.Header.Set("MerchantID", l.MerchantID)
 	}
+
 	c.Request.Header.Set("AccountID", l.AccountID)
 	c.Request.Header.Set("UserID", l.UserID)
 	c.Request.Header.Set("UserName", l.UserName)
