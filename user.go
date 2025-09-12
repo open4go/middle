@@ -116,6 +116,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 		// 后续传递默认root 或者 * 标识超级管理员查看所有租户数据
 		// 如果网关没有获取到，那么还需解析看看后台是否是超级super 可以查看所有商户到信息
 		merchantId := c.Request.Header.Get("X-Merchant-ID")
+		log.Log(c.Request.Context()).WithField("merchantId", merchantId).Debug("merchantId is received")
 		// 如果id不为空
 		if merchantId != "" {
 			// 查询数据库解析出商户tenantId
@@ -123,6 +124,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 			if err != nil {
 				log.Log(c.Request.Context()).Error(err)
 			}
+			log.Log(c.Request.Context()).WithField("rs", rs).Debug("merchantId is received")
 			c.Request.Header.Set("MerchantID", rs)
 		}
 	}
