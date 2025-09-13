@@ -125,7 +125,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 				log.Log(c.Request.Context()).Error(err)
 			}
 			log.Log(c.Request.Context()).WithField("rs", rs).Debug("merchantId is received")
-			c.Request.Header.Set("MerchantID", rs)
+			c.Request.Header.Set("X-Tenant-ID", rs)
 			// 超级管理员需要覆盖这个值
 			if merchantId == "*" {
 				// 代表所有站点到数据
