@@ -88,3 +88,19 @@ func extractClaims(token *jwt.Token) (*LoginInfo, error) {
 
 	return loginInfo, nil
 }
+
+// MerchantBindMiddleware 仅绑定商户信息，不校验登陆权限信息
+func MerchantBindMiddleware(key []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		bindMerchant(c)
+		c.Next()
+	}
+}
+
+func bindMerchant(c *gin.Context) int {
+	// Extract claims and load them into LoginInfo struct
+	loginInfo := LoadFromHeader(c)
+	// Write parsed data into the header
+	loginInfo.WriteIntoHeader(c)
+	return http.StatusOK
+}
