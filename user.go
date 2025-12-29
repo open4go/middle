@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
 	"github.com/open4go/model"
+	"github.com/redis/go-redis/v9"
 	"os"
 )
 
@@ -116,14 +118,16 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 		// 后续传递默认root 或者 * 标识超级管理员查看所有租户数据
 		// 如果网关没有获取到，那么还需解析看看后台是否是超级super 可以查看所有商户到信息
 		merchantId := c.Request.Header.Get("X-Merchant-ID")
-		log.Log(c.Request.Context()).WithField("merchantId", merchantId).Debug("merchantId is received")
+		log.Log(c.Request.Context()).WithField("merchantId", merchantId).
+			Debug("merchantId is received")
 		// 如果id不为空
 		if merchantId != "" {
 			// 查询数据库解析出商户tenantId
 			rs, err := GetRedisCacheHandler(c.Request.Context()).Get(c.Request.Context(), fmt.Sprintf("%s:%s", CacheMerchant2Tenant, merchantId)).Result()
-			if err != nil {
-				log.Log(c.Request.Context()).Error(err)
+			if errors.Is(err, redis.Nil) {
+				log.Log(c.Request.Context()).Debug(err)
 			}
+
 			log.Log(c.Request.Context()).WithField("rs", rs).Debug("merchantId is received")
 			c.Request.Header.Set("X-Tenant-ID", rs)
 			// 超级管理员需要覆盖这个值
