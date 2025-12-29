@@ -47,12 +47,40 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		accountId, ok := claims["sub"].(string)
 		if !ok || accountId == "" {
+			log.Log(c.Request.Context()).Error("accountId not found")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
 			c.Abort()
 			return
 		}
-
 		c.Set("accountId", accountId)
+
+		iss, ok := claims["iss"].(string)
+		if !ok {
+			log.Log(c.Request.Context()).Error("iss not found")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
+			c.Abort()
+			return
+		}
+		c.Set("iss", iss)
+
+		aud, ok := claims["aud"].(string)
+		if !ok {
+			log.Log(c.Request.Context()).Error("aud not found")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
+			c.Abort()
+			return
+		}
+		c.Set("aud", aud)
+
+		jti, ok := claims["jti"].(string)
+		if !ok {
+			log.Log(c.Request.Context()).Error("jti not found")
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
+			c.Abort()
+			return
+		}
+		c.Set("jti", jti)
+
 		c.Next()
 	}
 }
