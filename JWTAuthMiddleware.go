@@ -36,14 +36,14 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 		if err != nil || !token.Valid {
 			// invalid token
 			log.Log(c.Request.Context()).WithField("authHeader", authHeader).
-				Error("invalid token")
+				Error(err)
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
 		}
 
 		// 将 claims 保存到上下文
-		c.Set("claims", claims)
+		//c.Set("claims", claims)
 
 		accountId, ok := claims["sub"].(string)
 		if !ok || accountId == "" {
