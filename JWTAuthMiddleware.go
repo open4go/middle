@@ -1,10 +1,12 @@
 package middle
 
 import (
+	"context"
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
+	"github.com/open4go/model"
 	"net/http"
 	"strings"
 )
@@ -80,7 +82,10 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 			return
 		}
 		c.Set("jti", jti)
-
+		tenantId := c.Request.Header.Get("X-Tenant-ID")
+		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId)
+		ctx = context.WithValue(ctx, model.AccountKey, accountId)
+		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
 }
