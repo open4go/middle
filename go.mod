@@ -1,6 +1,6 @@
 module github.com/open4go/middle
 
-go 1.24
+go 1.25.8
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
