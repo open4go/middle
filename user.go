@@ -111,6 +111,12 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := c.Request.Header.Get("X-Tenant-ID")
+
+	if tenantId == "" {
+		// 如果自定义为空，则直接从登录信息中解析出来
+		tenantId = l.MerchantID
+	}
+
 	if tenantId != "" {
 		// 如果存在租户id 则当前是需要传递其作为商户id 并且作为数据隔离
 		c.Request.Header.Set("MerchantID", tenantId)
