@@ -111,10 +111,13 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := c.Request.Header.Get("X-Tenant-ID")
+	log.Log(c.Request.Context()).WithField("tenantId ", tenantId).WithField("fromUsermerchant tenantId", l.MerchantID).Info("+++++++++++++++++")
 
 	if tenantId == "" {
 		// 如果自定义为空，则直接从登录信息中解析出来
 		tenantId = l.MerchantID
+		// 强制修改header 使用共享域名模式
+		c.Request.Header.Set("X-Tenant-ID", tenantId)
 	}
 
 	if tenantId != "" {
@@ -152,7 +155,6 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Avatar", l.Avatar)
 	c.Request.Header.Set("LoginType", l.LoginType)
 	c.Request.Header.Set("LoginLevel", l.LoginLevel)
-
 	// 写入context
 	// 在请求上下文中设置值
 	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
