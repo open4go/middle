@@ -1,39 +1,62 @@
-name: Go
+name: Go CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
 
-      - name: Set up Go
+    steps:
+      # 📥 拉代码
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 🧰 设置 Go 环境
+      - name: Setup Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.24'
+          go-version: 1.25.8
+          cache: true
 
-      # 安全检查：Govulncheck 依赖漏洞扫描
-      - name: Install govulncheck
-        run: go install golang.org/x/vuln/cmd/govulncheck@latest
+      # 🔍 输出版本（调试用，建议保留）
+      - name: Check Go Version
+        run: go version
 
+      # 📦 下载依赖
+      - name: Download dependencies
+        run: go mod download
+
+      # 🔐 漏洞扫描（官方）
       - name: Run govulncheck
-        run: govulncheck -test=false $(go list ./... | grep -v vendor | grep -v 'opt/hostedtoolcache/go')
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@latest
+          govulncheck ./...
 
-      # 代码质量检查：Golangci-lint
+      # 🧹 安装 golangci-lint（用 Go 1.25 编译，解决你当前报错🔥）
       - name: Install golangci-lint
         run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
+      # 🧹 运行 lint
       - name: Run golangci-lint
-        run: $(go env GOPATH)/bin/golangci-lint run --skip-dirs vendor --skip-dirs third_party ./... | grep -v 'opt/hostedtoolcache/go'
+        run: golangci-lint run --timeout=5m
 
+      # 🔨 构建
       - name: Build
         run: go build -v ./...
 
+      # 🧪 测试
       - name: Test
         run: go test -v ./...
+
+      # 🔒 文件系统安全扫描（可选但推荐）
+      - name: Security Scan (Trivy FS)
+        uses: aquasecurity/trivy-action@v0.20.0
+        with:
+          scan-type: fs
+          format: table
+          exit-code: 1
