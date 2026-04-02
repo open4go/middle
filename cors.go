@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/hex"
 	"github.com/gin-gonic/gin"
+	"github.com/open4go/model"
+	"github.com/spf13/viper"
 	"math/rand"
+	"strings"
 )
 
 // CORSMiddleware 跨站请求
@@ -31,6 +34,16 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 			return
 		}
 
+		// 判断当前登录的系统域名是否为超级管理员后台
+		host := c.Request.Host
+		isSuperDomain := false
+		if strings.HasPrefix(host, viper.GetString("super.domain")) {
+			isSuperDomain = true
+		}
+
+		if isSuperDomain {
+			ctx = context.WithValue(ctx, model.NamespaceKey, "*")
+		}
 		c.Next()
 	}
 }
