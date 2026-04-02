@@ -10,7 +10,9 @@ import (
 	"github.com/open4go/log"
 	"github.com/open4go/model"
 	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 	"os"
+	"strings"
 )
 
 const (
@@ -111,10 +113,23 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := c.Request.Header.Get("X-Tenant-ID")
-	log.Log(c.Request.Context()).WithField("tenantId ", tenantId).WithField("fromUsermerchant tenantId", l.MerchantID).Info("+++++++++++++++++")
 
-	if tenantId == "" {
-		// 如果自定义为空，则直接从登录信息中解析出来
+	host := c.Request.Host
+	isSuperDomain := false
+	if strings.HasPrefix(host, viper.GetString("super.domain")) {
+		isSuperDomain = true
+	}
+
+	log.Log(c.Request.Context()).
+		WithField("tenantId ", tenantId).
+		WithField("gateway bind domain tenantId", l.MerchantID).
+		WithField("domain", host).
+		WithField("isSuperDomain", isSuperDomain).
+		Debug("before write into each response header")
+
+	if tenantId == "" && !isSuperDomain {
+		// 如果自定义为空，并且不是超级管理员站点（没有了商户限制，则可以查看所有数据）
+		// 则直接从登录信息中解析出来
 		tenantId = l.MerchantID
 		// 强制修改header 使用共享域名模式
 		c.Request.Header.Set("X-Tenant-ID", tenantId)
@@ -161,5 +176,9 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
 	ctx = context.WithValue(ctx, model.MerchantKey, tenantId)
 	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
+
+	if isSuperDomain {
+		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
+	}
 	c.Request = c.Request.WithContext(ctx)
 }
