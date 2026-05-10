@@ -9,6 +9,7 @@ require (
 	github.com/open4go/db v0.0.13
 	github.com/open4go/log v0.0.16
 	github.com/open4go/model v0.0.20
+	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
 	github.com/r2day/body v0.0.1
 	github.com/redis/go-redis/v9 v9.7.3
@@ -20,6 +21,7 @@ require (
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/Microsoft/go-winio v0.4.14 // indirect
+	github.com/boombuler/barcode v1.0.1-0.20190219062509-6c824513bacc // indirect
 	github.com/bytedance/sonic v1.9.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

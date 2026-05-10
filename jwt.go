@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
 	"github.com/open4go/log"
+	"github.com/pquerna/otp/totp"
 	"net/http"
 )
 
@@ -103,4 +105,72 @@ func bindMerchant(c *gin.Context) int {
 	// Write parsed data into the header
 	loginInfo.WriteIntoHeader(c)
 	return http.StatusOK
+}
+
+func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
+	return func(c *gin.Context) {
+
+		// 1. 获取 TOTP code（支持 Body + Header）
+		code := getTOTPCode(c)
+
+		if code == "" {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
+				"error": "缺少 TOTP 验证码 (code)",
+			})
+			return
+		}
+
+		// Retrieve JWT token from the "jwt" cookie
+		cookie, err := c.Cookie("jwt")
+		if err != nil || cookie == "" {
+			log.Log(c.Request.Context()).
+				WithError(err).Error("Failed to retrieve JWT token from cookie")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		// Parse JWT token with claims
+		token, err := parseJWTToken(cookie, key)
+		if err != nil {
+			log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		// Extract claims and load them into LoginInfo struct
+		loginInfo, err := extractClaims(token)
+		if err != nil {
+			log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
+			c.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
+		// 二次验证
+		totp.Validate(code, loginInfo.OPTSecret)
+
+		c.Next()
+
+	}
+}
+
+// 辅助函数：支持从 Body 和 Header 获取 code
+func getTOTPCode(c *gin.Context) string {
+	// 优先从 Header 获取
+	if code := c.GetHeader("X-TOTP-Code"); code != "" {
+		return code
+	}
+
+	// 从 Body 获取（支持 JSON）
+	type totpRequest struct {
+		Code string `json:"code" binding:"omitempty,len=6"`
+	}
+
+	var req totpRequest
+	// 使用 ShouldBindBodyWith 不会消耗 c.Request.Body
+	if err := c.ShouldBindBodyWith(&req, binding.JSON); err == nil && req.Code != "" {
+		return req.Code
+	}
+
+	// 最后尝试 Query 参数
+	return c.Query("code")
 }

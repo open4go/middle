@@ -39,6 +39,8 @@ type LoginInfo struct {
 	LoginType string `json:"login_type"  bson:"login_type"`
 	// LoginLevel 登陆用户等级
 	LoginLevel string `json:"login_level"  bson:"login_level"`
+	// 用于二次验证权限的接口，如解密手机号等
+	OPTSecret string `json:"os"  bson:"os"`
 }
 
 // Dump 登陆信息
@@ -49,7 +51,9 @@ func (l *LoginInfo) Dump(merchant string,
 	loginType string,
 	userName string,
 	accountId string,
-	loginLevel string) (string, error) {
+	loginLevel string,
+	optSecret string,
+) (string, error) {
 	// step 01 转换为json
 	loginInfo := LoginInfo{
 		Namespace:  os.Getenv(model.NamespaceKey),
@@ -61,6 +65,7 @@ func (l *LoginInfo) Dump(merchant string,
 		Avatar:     avatar,
 		LoginType:  loginType,
 		LoginLevel: loginLevel,
+		OPTSecret:  optSecret,
 	}
 	payload, err := json.Marshal(loginInfo)
 	if err != nil {
