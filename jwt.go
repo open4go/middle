@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
-	"github.com/gin-gonic/gin/binding"
 	"github.com/open4go/log"
 	"github.com/pquerna/otp/totp"
 	"net/http"
@@ -158,17 +157,6 @@ func getTOTPCode(c *gin.Context) string {
 	// 优先从 Header 获取
 	if code := c.GetHeader("X-TOTP-Code"); code != "" {
 		return code
-	}
-
-	// 从 Body 获取（支持 JSON）
-	type totpRequest struct {
-		Code string `json:"code" binding:"omitempty,len=6"`
-	}
-
-	var req totpRequest
-	// 使用 ShouldBindBodyWith 不会消耗 c.Request.Body
-	if err := c.ShouldBindBodyWith(&req, binding.JSON); err == nil && req.Code != "" {
-		return req.Code
 	}
 
 	// 最后尝试 Query 参数
