@@ -145,8 +145,12 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		}
 
 		// 二次验证
-		totp.Validate(code, loginInfo.OPTSecret)
-
+		b := totp.Validate(code, loginInfo.OPTSecret)
+		if !b {
+			log.Log(c.Request.Context()).WithError(err).Error("failed to validate")
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
 		c.Next()
 
 	}
