@@ -20,8 +20,13 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Range,X-Total-Count")
 
-		// 添加必要的信息便于日志追踪
+		// Reuse TraceMiddleware RequestID when present so logs and error bodies share one id.
 		traceID := generateTraceID()
+		if existing, ok := c.Get("RequestID"); ok {
+			if s, ok := existing.(string); ok && s != "" {
+				traceID = s
+			}
+		}
 		ctx := context.WithValue(c.Request.Context(), "traceid", traceID)
 		ip := c.ClientIP()
 		ctx = context.WithValue(ctx, "ip", ip)
