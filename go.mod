@@ -7,7 +7,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/google/uuid v1.6.0
 	github.com/open4go/db v0.0.13
-	github.com/open4go/log v0.0.16
+	github.com/open4go/log v0.0.20
 	github.com/open4go/model v0.0.20
 	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
@@ -96,5 +96,7 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/open4go/log => ../log
 
 //replace github.com/open4go/auth => ../../open4go/auth

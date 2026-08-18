@@ -2,29 +2,15 @@ package middle
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"github.com/open4go/log"
-	"github.com/sirupsen/logrus"
 )
 
-// TraceMiddleware 日志追踪
+// TraceMiddleware assigns a request id and writes it into the request
+// context so log.Log(ctx) can attach a `trace` field. Prefer inbound
+// X-Request-ID / X-Trace-ID when the caller already has one.
+//
+// Kept as a thin wrapper so existing services that import middle.TraceMiddleware
+// pick up the context injection without changing call sites.
 func TraceMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-
-		// Generate a UUID for the request ID
-		requestID := uuid.New().String()
-
-		// Set the request ID in the request context for later use
-		c.Set("RequestID", requestID)
-
-		// Pass the request ID in the response headers
-		c.Header("X-Request-ID", requestID)
-
-		// Set the request ID in the Logrus logger's fields
-		logger := log.Log(c.Request.Context()).WithFields(
-			logrus.Fields{"request_id": requestID})
-		c.Set("log", logger)
-
-		c.Next()
-	}
+	return log.TraceMiddleware()
 }
