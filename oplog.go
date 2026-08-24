@@ -613,11 +613,18 @@ func RedactJSON(raw []byte) string {
 		return truncateRunes(s, maxAuditBody)
 	}
 	redactValue(v)
-	b, err := json.Marshal(v)
+	pretty, err := json.MarshalIndent(v, "", "  ")
 	if err != nil {
-		return ""
+		return strings.TrimSpace(string(raw))
 	}
-	s := string(b)
+	if len(pretty) <= maxAuditBody {
+		return string(pretty)
+	}
+	compact, err := json.Marshal(v)
+	if err != nil {
+		return strings.TrimSpace(string(raw))
+	}
+	s := string(compact)
 	if len(s) > maxAuditBody {
 		return s[:maxAuditBody] + "…"
 	}
