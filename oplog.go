@@ -13,6 +13,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gin-gonic/gin"
+	"github.com/open4go/log"
 	"github.com/open4go/log/model/operation"
 	"github.com/open4go/model"
 	rtime "github.com/r2day/base/time"
