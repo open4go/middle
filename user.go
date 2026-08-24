@@ -172,6 +172,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("AccountID", l.AccountID)
 	c.Request.Header.Set("UserID", l.UserID)
 	c.Request.Header.Set("UserName", l.UserName)
+	c.Request.Header.Set("Phone", l.Phone)
 	c.Request.Header.Set("Avatar", l.Avatar)
 	c.Request.Header.Set("LoginType", l.LoginType)
 	c.Request.Header.Set("LoginLevel", l.LoginLevel)

@@ -1,19 +1,12 @@
 package middle
 
 import (
-	"github.com/gin-gonic/gin/binding"
 	"net/http"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
 	"github.com/open4go/log/model/login"
-	"github.com/open4go/log/model/operation"
-	rtime "github.com/r2day/base/time"
-	"github.com/r2day/body"
-
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -21,139 +14,86 @@ import (
 // LoginLogMiddleware handles login-related logging
 func LoginLogMiddleware(db *mongo.Database, skipViewLog bool) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		c.Next()
-
-		remoteIP := c.Request.Header.Get("X-Real-IP")
-		if remoteIP == "" {
-			remoteIP = c.Request.Header.Get("X-Forwarded-For")
+		if db == nil {
+			c.Next()
+			return
 		}
-		if remoteIP == "" {
-			remoteIP = c.ClientIP()
-		}
-
 		if c.Request.Method == http.MethodGet && skipViewLog {
 			log.Log(c.Request.Context()).Debug("GET method, not logged to database")
-			return
-		}
-
-		l := LoadFromHeader(c)
-		m := &login.Model{}
-		var jsonInstance body.SimpleSignInRequest
-		if err := c.ShouldBindBodyWith(&jsonInstance, binding.JSON); err != nil {
-			log.Log(c.Request.Context()).Error(err)
-			return
-		}
-
-		m.ID = primitive.NewObjectID()
-		accessLevelInt, _ := strconv.Atoi(l.LoginLevel)
-		m.Meta.AccessLevel = uint(accessLevelInt)
-
-		m.Meta.MerchantID = l.Namespace
-		m.Meta.AccountID = l.AccountID
-
-		createdAt := rtime.FomratTimeAsReader(time.Now().Unix())
-		m.Meta.CreatedAt = createdAt
-		m.Meta.UpdatedAt = createdAt
-
-		m.ClientIP = c.ClientIP()
-		m.RemoteIP = remoteIP
-		m.FullPath = c.FullPath()
-		m.RespCode = c.Writer.Status()
-		m.UserID = l.UserID
-		m.AccountID = l.AccountID
-
-		handler := m.Init(c.Request.Context(), db, m.CollectionName())
-		_, err := handler.Create(m)
-		if err != nil {
-			log.Log(c.Request.Context()).Error(err)
-			return
-		}
-	}
-}
-
-// OperateLogMiddleware handles operation-related logging
-func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		method := c.Request.Method
-
-		if method == http.MethodGet {
-			log.Log(c.Request.Context()).WithField("method", method).
-				Debug("GET method, not logged to database by default")
 			c.Next()
 			return
 		}
 
+		payload := readRequestBody(c)
 		c.Next()
-
-		if method == http.MethodPut || method == http.MethodDelete {
-			l := LoadFromHeader(c)
-
-			clientIP := c.ClientIP()
-			remoteIP := c.Request.Header.Get("X-Real-IP")
-			if remoteIP == "" {
-				remoteIP = c.Request.Header.Get("X-Forwarded-For")
-			}
-			if remoteIP == "" {
-				remoteIP = c.ClientIP()
-			}
-
-			fullPath := c.FullPath()
-			// 移除 "/:_id"
-			fullPath = strings.Replace(fullPath, "/:_id", "", -1)
-			targetID := c.Param("_id")
-			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
-		}
-
-		if method == http.MethodPost {
-			l := LoadFromHeader(c)
-
-			clientIP := c.ClientIP()
-			remoteIP := c.Request.Header.Get("X-Real-IP")
-			if remoteIP == "" {
-				remoteIP = c.Request.Header.Get("X-Forwarded-For")
-			}
-			if remoteIP == "" {
-				remoteIP = c.ClientIP()
-			}
-
-			fullPath := c.FullPath()
-			headers := c.Writer.Header()
-			targetID := headers.Get("TargetId")
-
-			if targetID == "" {
-				if value, ok := c.Value("TargetId").(string); ok {
-					targetID = value
-				} else {
-					// 处理无法从上下文中获取 "TargetId" 的情况
-				}
-			}
-			log.Log(c.Request.Context()).
-				WithField("clientIP", clientIP).
-				WithField("remoteIP", remoteIP).
-				WithField("fullPath", fullPath).
-				WithField("method", method).
-				WithField("targetID", targetID).
-				Debug("before save")
-			saveLog(c, l, clientIP, remoteIP, fullPath, method, targetID, db)
-		}
+		saveLoginLog(c, db, payload)
 	}
 }
 
-func saveLog(c *gin.Context, l LoginInfo, clientIP, remoteIP, fullPath, method string, targetID string, db *mongo.Database) {
-	m := &operation.Model{}
-	m.ClientIP = clientIP
-	m.RemoteIP = remoteIP
-	m.FullPath = fullPath
-	m.Method = method
-	m.TargetID = targetID
-	m.Operator = l.UserName
-	m.AccountID = l.AccountID
-	m.Timestamp = uint64(time.Now().Unix())
-
-	handler := m.Init(c.Request.Context(), db, m.CollectionName())
-	id, err := handler.Create(m)
-	if err != nil {
-		log.Log(c.Request.Context()).Error(err)
+func saveLoginLog(c *gin.Context, db *mongo.Database, payload []byte) {
+	l := LoadFromHeader(c)
+	body := extractBodyFields(payload)
+	fullPath := c.FullPath()
+	if fullPath == "" {
+		fullPath = c.Request.URL.Path
 	}
-	log.Log(c.Request.Context()).WithField("id", id).Debug("after create done")
+
+	phone := firstNonEmpty(l.Phone, body.Phone)
+	userID := firstNonEmpty(l.UserID, body.UserID)
+	accountID := firstNonEmpty(l.AccountID, body.AccountID)
+	merchantID := firstNonEmpty(
+		l.MerchantID,
+		c.GetHeader("X-Tenant-ID"),
+		c.GetHeader("X-Merchant-ID"),
+		body.MerchantID,
+		l.Namespace,
+	)
+	loginType := firstNonEmpty(l.LoginType, body.LoginType, body.Type)
+	userAgent := truncateRunes(c.Request.UserAgent(), 240)
+	logType := loginLogType(fullPath, c.Request.URL.Path)
+
+	m := &login.Model{}
+	m.ID = primitive.NewObjectID()
+	m.ClientIP = c.ClientIP()
+	m.RemoteIP = clientRemoteIP(c)
+	m.FullPath = fullPath
+	m.Method = c.Request.Method
+	m.RespCode = c.Writer.Status()
+	m.TargetID = firstNonEmpty(userID, accountID, phone)
+	m.Device = firstNonEmpty(c.GetHeader("X-Device-ID"), c.GetHeader("X-Device-Id"), truncateRunes(userAgent, 180))
+	m.LogType = logType
+	m.UserID = userID
+	m.AccountID = accountID
+	m.UserName = l.UserName
+	m.Phone = phone
+	m.LoginType = loginType
+	m.MerchantID = merchantID
+	m.TraceID = requestTraceID(c)
+	m.UserAgent = userAgent
+
+	ctx := withLogIdentity(c.Request.Context(), l, merchantID)
+	handler := m.Init(ctx, db, m.CollectionName())
+	m.Meta = completeMeta(handler.GetMeta(), parseAccessLevel(l.LoginLevel), m.RespCode < 400, merchantID, accountID, l.Namespace, firstNonEmpty(userID, accountID, phone))
+	if _, err := handler.Context.Handler.Collection(handler.Context.Collection).InsertOne(ctx, m); err != nil {
+		log.Log(ctx).WithError(err).
+			WithField("path", fullPath).
+			WithField("log_type", logType).
+			Warning("write login log failed")
+	}
+}
+
+func loginLogType(fullPath, rawPath string) string {
+	p := strings.ToLower(fullPath + " " + rawPath)
+	switch {
+	case strings.Contains(p, "signout"):
+		return "signout"
+	case strings.Contains(p, "/otp"):
+		return "otp"
+	case strings.Contains(p, "/mch"):
+		return "merchant_choose"
+	case strings.Contains(p, "signup"), strings.Contains(p, "register"):
+		return "signup"
+	default:
+		return "signin"
+	}
 }
