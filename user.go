@@ -10,7 +10,6 @@ import (
 	"github.com/open4go/log"
 	"github.com/open4go/model"
 	"github.com/redis/go-redis/v9"
-	"github.com/spf13/viper"
 	"os"
 	"strings"
 )
@@ -118,52 +117,38 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := c.Request.Header.Get("X-Tenant-ID")
-
-	host := c.Request.Host
-	isSuperDomain := false
-	if strings.HasPrefix(host, viper.GetString("super.domain")) {
-		isSuperDomain = true
-	}
+	isSuperDomain := isSuperAdminHost(c.Request.Host)
 
 	log.Log(c.Request.Context()).
 		WithField("tenantId ", tenantId).
 		WithField("gateway bind domain tenantId", l.MerchantID).
-		WithField("domain", host).
+		WithField("domain", c.Request.Host).
 		WithField("isSuperDomain", isSuperDomain).
 		Debug("before write into each response header")
 
-	if tenantId == "" && !isSuperDomain {
-		// 如果自定义为空，并且不是超级管理员站点（没有了商户限制，则可以查看所有数据）
-		// 则直接从登录信息中解析出来
+	if tenantId == "" && !skipTenantFallback(c) {
+		// Shared-domain / tenant host: isolate by the merchant in the login token.
+		// Super-admin may skip this only when X-Merchant-ID is set (including "*").
 		tenantId = l.MerchantID
-		// 强制修改header 使用共享域名模式
 		c.Request.Header.Set("X-Tenant-ID", tenantId)
 	}
 
 	if tenantId != "" {
-		// 如果存在租户id 则当前是需要传递其作为商户id 并且作为数据隔离
 		c.Request.Header.Set("MerchantID", tenantId)
 	} else {
-		// 后续传递默认root 或者 * 标识超级管理员查看所有租户数据
-		// 如果网关没有获取到，那么还需解析看看后台是否是超级super 可以查看所有商户到信息
-		merchantId := c.Request.Header.Get("X-Merchant-ID")
+		merchantId := strings.TrimSpace(c.Request.Header.Get("X-Merchant-ID"))
 		log.Log(c.Request.Context()).WithField("merchantId", merchantId).
 			Debug("merchantId is received")
-		// 如果id不为空
-		if merchantId != "" {
-			// 查询数据库解析出商户tenantId
+		if merchantId == "*" {
+			log.Log(c.Request.Context()).WithField("merchant", merchantId).Debug("query all merchants data")
+		} else if merchantId != "" {
 			rs, err := GetRedisCacheHandler(c.Request.Context()).Get(c.Request.Context(), fmt.Sprintf("%s:%s", CacheMerchant2Tenant, merchantId)).Result()
 			if errors.Is(err, redis.Nil) {
 				log.Log(c.Request.Context()).Debug(err)
 			}
-
 			log.Log(c.Request.Context()).WithField("rs", rs).Debug("merchantId is received")
-			c.Request.Header.Set("X-Tenant-ID", rs)
-			// 超级管理员需要覆盖这个值
-			if merchantId == "*" {
-				// 代表所有站点到数据
-				log.Log(c.Request.Context()).WithField("merchant", merchantId).Debug("query all merchants data")
-			} else {
+			if rs != "" {
+				c.Request.Header.Set("X-Tenant-ID", rs)
 				tenantId = rs
 			}
 		}
@@ -183,7 +168,8 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	ctx = context.WithValue(ctx, model.MerchantKey, tenantId)
 	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
 
-	if isSuperDomain {
+	// View-all mode: super-admin host and no resolved tenant.
+	if isSuperDomain && tenantId == "" {
 		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
 	}
 	c.Request = c.Request.WithContext(ctx)
