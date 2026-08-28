@@ -83,6 +83,37 @@ func TestWriteIntoHeaderSuperAdminStarSeesAll(t *testing.T) {
 	}
 }
 
+func TestWriteIntoHeaderSuperAdminSwitchUsesMerchantHeader(t *testing.T) {
+	setSuperDomain(t, "super.localhost")
+	c := newWriteCtx("super.localhost:8812", map[string]string{"X-Merchant-ID": "tenant-b"})
+	login := LoginInfo{MerchantID: "st", Namespace: "hlj"}
+	login.WriteIntoHeader(c)
+
+	if got := c.GetHeader("X-Tenant-ID"); got != "tenant-b" {
+		t.Fatalf("X-Tenant-ID=%q want tenant-b", got)
+	}
+	if got := model.GetValueFromCtx(c.Request.Context(), model.MerchantKey); got != "tenant-b" {
+		t.Fatalf("MerchantKey=%q want tenant-b", got)
+	}
+}
+
+func TestWriteIntoHeaderForwardedHostSeesSuper(t *testing.T) {
+	setSuperDomain(t, "super.localhost")
+	c := newWriteCtx("store-center:9801", map[string]string{
+		"X-Forwarded-Host": "super.localhost:8988",
+		"X-Merchant-ID":    "*",
+	})
+	login := LoginInfo{MerchantID: "st", Namespace: "hlj"}
+	login.WriteIntoHeader(c)
+
+	if got := c.GetHeader("X-Tenant-ID"); got != "" {
+		t.Fatalf("forwarded super view-all X-Tenant-ID=%q want empty", got)
+	}
+	if got := model.GetValueFromCtx(c.Request.Context(), model.NamespaceKey); got != "*" {
+		t.Fatalf("NamespaceKey=%q want *", got)
+	}
+}
+
 func TestWriteIntoHeaderGatewayTenantWins(t *testing.T) {
 	setSuperDomain(t, "")
 	c := newWriteCtx("localhost:8812", map[string]string{"X-Tenant-ID": "from-gateway"})

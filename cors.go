@@ -15,7 +15,7 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 		// 跨站请求必要的header
 		c.Writer.Header().Set("Access-Control-Allow-Origin", host)
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, Merchant-Id, jwt, User-Id, Content-Range, X-Total-Count, Token")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization, accept, origin, Cache-Control, X-Requested-With, Merchant-Id, X-Merchant-ID, X-Tenant-ID, jwt, User-Id, Content-Range, X-Total-Count, Token")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT, DELETE")
 		c.Writer.Header().Set("Access-Control-Expose-Headers", "Content-Range,X-Total-Count")
 
@@ -30,7 +30,7 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 		ip := c.ClientIP()
 		ctx = context.WithValue(ctx, "ip", ip)
 
-		if c.Request.Method != "OPTIONS" && isSuperAdminHost(c.Request.Host) {
+		if c.Request.Method != "OPTIONS" && isSuperAdminHost(requestAdminHost(c)) {
 			ctx = context.WithValue(ctx, model.NamespaceKey, "*")
 		}
 

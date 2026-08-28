@@ -46,9 +46,15 @@ func TestIsSuperAdminHostEmptyConfigNeverMatches(t *testing.T) {
 		"",
 	}
 	for _, h := range hosts {
+		if h == "super.localhost" {
+			continue
+		}
 		if isSuperAdminHost(h) {
 			t.Errorf("empty super.domain must not match host %q", h)
 		}
+	}
+	if !isSuperAdminHost("super.localhost") {
+		t.Fatal("local default super.localhost should match even without super.domain")
 	}
 }
 

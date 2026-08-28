@@ -4,14 +4,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
-	"fmt"
+	"os"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
 	"github.com/open4go/model"
-	"github.com/redis/go-redis/v9"
-	"os"
-	"strings"
 )
 
 const (
@@ -116,42 +114,36 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
-	tenantId := c.Request.Header.Get("X-Tenant-ID")
-	isSuperDomain := isSuperAdminHost(c.Request.Host)
+	tenantId := strings.TrimSpace(c.Request.Header.Get("X-Tenant-ID"))
+	switcher := switchedMerchantID(c)
+	isSuperDomain := isSuperAdminHost(requestAdminHost(c))
 
 	log.Log(c.Request.Context()).
 		WithField("tenantId ", tenantId).
+		WithField("switcher", switcher).
 		WithField("gateway bind domain tenantId", l.MerchantID).
 		WithField("domain", c.Request.Host).
 		WithField("isSuperDomain", isSuperDomain).
 		Debug("before write into each response header")
 
-	if tenantId == "" && !skipTenantFallback(c) {
-		// Shared-domain / tenant host: isolate by the merchant in the login token.
-		// Super-admin may skip this only when X-Merchant-ID is set (including "*").
+	if isSuperDomain && switcher != "" {
+		if switcher == "*" {
+			tenantId = ""
+			c.Request.Header.Del("X-Tenant-ID")
+			log.Log(c.Request.Context()).Debug("super-admin view-all merchants")
+		} else {
+			tenantId = switcher
+			c.Request.Header.Set("X-Tenant-ID", tenantId)
+		}
+	} else if tenantId == "" {
 		tenantId = l.MerchantID
-		c.Request.Header.Set("X-Tenant-ID", tenantId)
+		if tenantId != "" {
+			c.Request.Header.Set("X-Tenant-ID", tenantId)
+		}
 	}
 
-	if tenantId != "" {
+	if tenantId != "" && tenantId != "*" {
 		c.Request.Header.Set("MerchantID", tenantId)
-	} else {
-		merchantId := strings.TrimSpace(c.Request.Header.Get("X-Merchant-ID"))
-		log.Log(c.Request.Context()).WithField("merchantId", merchantId).
-			Debug("merchantId is received")
-		if merchantId == "*" {
-			log.Log(c.Request.Context()).WithField("merchant", merchantId).Debug("query all merchants data")
-		} else if merchantId != "" {
-			rs, err := GetRedisCacheHandler(c.Request.Context()).Get(c.Request.Context(), fmt.Sprintf("%s:%s", CacheMerchant2Tenant, merchantId)).Result()
-			if errors.Is(err, redis.Nil) {
-				log.Log(c.Request.Context()).Debug(err)
-			}
-			log.Log(c.Request.Context()).WithField("rs", rs).Debug("merchantId is received")
-			if rs != "" {
-				c.Request.Header.Set("X-Tenant-ID", rs)
-				tenantId = rs
-			}
-		}
 	}
 
 	c.Request.Header.Set("AccountID", l.AccountID)
@@ -165,11 +157,15 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	// 在请求上下文中设置值
 	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
 	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
-	ctx = context.WithValue(ctx, model.MerchantKey, tenantId)
+	merchantKey := tenantId
+	if merchantKey == "*" {
+		merchantKey = ""
+	}
+	ctx = context.WithValue(ctx, model.MerchantKey, merchantKey)
 	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
 
 	// View-all mode: super-admin host and no resolved tenant.
-	if isSuperDomain && tenantId == "" {
+	if isSuperDomain && merchantKey == "" {
 		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
 	}
 	c.Request = c.Request.WithContext(ctx)

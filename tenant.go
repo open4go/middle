@@ -2,6 +2,7 @@ package middle
 
 import (
 	"net"
+	"net/url"
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -21,16 +22,43 @@ func hostnameOnly(host string) string {
 	return strings.ToLower(h)
 }
 
-// isSuperAdminHost reports whether host is the configured super-admin console.
-// An empty super.domain is never a match: strings.HasPrefix(host, "") is true
-// for every host, which previously disabled tenant isolation on services that
-// do not set the key (e.g. product-api).
+// requestAdminHost prefers the original browser host. APISIX / docker often
+// overwrite Request.Host with the upstream name, which would hide super mode.
+func requestAdminHost(c *gin.Context) string {
+	if c == nil || c.Request == nil {
+		return ""
+	}
+	if v := strings.TrimSpace(c.GetHeader("X-Forwarded-Host")); v != "" {
+		return strings.TrimSpace(strings.Split(v, ",")[0])
+	}
+	if origin := strings.TrimSpace(c.GetHeader("Origin")); origin != "" {
+		if u, err := url.Parse(origin); err == nil && u.Host != "" {
+			return u.Host
+		}
+	}
+	return c.Request.Host
+}
+
+// isSuperAdminHost reports whether host is the super-admin console.
+// An empty super.domain never matches ordinary hosts (product-api, admin.localhost).
+// super.localhost is the local default even when a service omits super.domain.
 func isSuperAdminHost(host string) bool {
-	super := strings.TrimSpace(viper.GetString("super.domain"))
-	if super == "" {
+	h := hostnameOnly(host)
+	if h == "" {
 		return false
 	}
-	return hostnameOnly(host) == hostnameOnly(super)
+	super := hostnameOnly(viper.GetString("super.domain"))
+	if super != "" && h == super {
+		return true
+	}
+	return h == "super.localhost"
+}
+
+func switchedMerchantID(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	return strings.TrimSpace(c.GetHeader("X-Merchant-ID"))
 }
 
 // skipTenantFallback is true only on the super-admin host when the caller
@@ -40,8 +68,8 @@ func skipTenantFallback(c *gin.Context) bool {
 	if c == nil || c.Request == nil {
 		return false
 	}
-	if !isSuperAdminHost(c.Request.Host) {
+	if !isSuperAdminHost(requestAdminHost(c)) {
 		return false
 	}
-	return strings.TrimSpace(c.GetHeader("X-Merchant-ID")) != ""
+	return switchedMerchantID(c) != ""
 }
