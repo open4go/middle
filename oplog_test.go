@@ -2,8 +2,10 @@ package middle
 
 import (
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -72,6 +74,29 @@ func TestRedactJSON(t *testing.T) {
 	nested := m["nested"].(map[string]interface{})
 	if nested["token"] != "***" {
 		t.Fatalf("nested %v", nested)
+	}
+}
+
+func TestSkipRequestBodyCaptureMultipart(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(w)
+	body := strings.Repeat("x", 64)
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/system/fs/client/image", strings.NewReader(body))
+	c.Request.Header.Set("Content-Type", "multipart/form-data; boundary=----x")
+	c.Request.ContentLength = int64(len(body))
+	if !skipRequestBodyCapture(c) {
+		t.Fatal("multipart must not be captured")
+	}
+	if got := readRequestBody(c); got != nil {
+		t.Fatalf("must not consume upload body, got %d bytes", len(got))
+	}
+	rest, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(rest) != body {
+		t.Fatal("upload body was drained")
 	}
 }
 

@@ -80,6 +80,10 @@ func OperateLogMiddleware(db *mongo.Database) gin.HandlerFunc {
 			return
 		}
 
+		if !allowQuotaOrAbort(c) {
+			return
+		}
+
 		start := time.Now()
 		payload := readRequestBody(c)
 		c.Next()
@@ -102,8 +106,22 @@ func skipOperatePath(fullPath, rawPath string) bool {
 	return false
 }
 
+func skipRequestBodyCapture(c *gin.Context) bool {
+	if c == nil || c.Request == nil {
+		return true
+	}
+	ct := strings.ToLower(c.ContentType())
+	if strings.HasPrefix(ct, "multipart/") || strings.Contains(ct, "octet-stream") {
+		return true
+	}
+	if c.Request.ContentLength > maxAuditBody {
+		return true
+	}
+	return false
+}
+
 func readRequestBody(c *gin.Context) []byte {
-	if c.Request.Body == nil {
+	if c.Request.Body == nil || skipRequestBodyCapture(c) {
 		return nil
 	}
 	payload, err := io.ReadAll(io.LimitReader(c.Request.Body, maxAuditBody+1))
@@ -159,6 +177,17 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 			WithField("method", fields.method).
 			Warning("write operation log failed")
 	}
+	enqueueUsageFromLog(fields, c.Request.ContentLength)
+}
+
+func enqueueUsageFromLog(fields operationFields, contentLength int64) {
+	ev, ok := UsageFromOperation(fields.resource, fields.action, fields.respCode, contentLength)
+	if !ok {
+		return
+	}
+	ev.MerchantID = fields.merchantID
+	ev.Path = fields.fullPath
+	EnqueueUsage(ev)
 }
 
 type operationFields struct {
@@ -488,6 +517,8 @@ func ClassifyResource(path string) (resource, name string) {
 		return "member_level", "会员等级"
 	case strings.Contains(p, "/member"):
 		return "member", "会员"
+	case strings.Contains(p, "/fs/") || strings.Contains(p, "/client/image"):
+		return "image", "图片"
 	case strings.Contains(p, "/password"):
 		return "password", "密码"
 	case strings.Contains(p, "/auth/account") || strings.HasSuffix(p, "/account") || strings.Contains(p, "/account/"):
