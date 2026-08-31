@@ -11,6 +11,7 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
 	github.com/redis/go-redis/v9 v9.7.3
+	github.com/segmentio/kafka-go v0.4.49
 	github.com/spf13/viper v1.12.0
 	go.mongodb.org/mongo-driver v1.17.3
 )
@@ -46,7 +47,6 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.15 // indirect
 	github.com/r2day/db v0.3.5 // indirect
 	github.com/rogpeppe/go-internal v1.14.1 // indirect
-	github.com/segmentio/kafka-go v0.4.49 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
