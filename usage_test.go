@@ -23,6 +23,10 @@ func TestUsageFromOperation(t *testing.T) {
 	if ok {
 		t.Fatal("role is not occupancy")
 	}
+	ev, ok = UsageFromOperation("scm", "create", 200, 0)
+	if !ok || ev.Kind != KindScm || ev.Delta != 1 {
+		t.Fatalf("scm %+v", ev)
+	}
 }
 
 func TestClassifyResourceImage(t *testing.T) {
@@ -33,6 +37,22 @@ func TestClassifyResourceImage(t *testing.T) {
 	res, _ = ClassifyResource("/v1/system/fs/image")
 	if res != "image" {
 		t.Fatalf("admin image %s", res)
+	}
+	res, name = ClassifyResource("/v1/hlj/scm/material")
+	if res != "scm" || name != "供应链" {
+		t.Fatalf("scm %s %s", res, name)
+	}
+	res, _ = ClassifyResource("/v1/hlj/active/campaign")
+	if res != "campaign" {
+		t.Fatalf("campaign %s", res)
+	}
+	res, _ = ClassifyResource("/v1/hlj/device/printer")
+	if res != "device" {
+		t.Fatalf("device %s", res)
+	}
+	res, _ = ClassifyResource("/v1/hlj/client/launch")
+	if res != "client" {
+		t.Fatalf("client %s", res)
 	}
 }
 

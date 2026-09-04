@@ -529,14 +529,24 @@ func ClassifyResource(path string) (resource, name string) {
 		return "tenant", "站点"
 	case strings.Contains(p, "/app"):
 		return "app", "应用"
+	case strings.Contains(p, "/scm"):
+		return "scm", "供应链"
+	case strings.Contains(p, "/active"), strings.Contains(p, "/campaign"), strings.Contains(p, "/coupon"):
+		return "campaign", "营销活动"
+	case strings.Contains(p, "/device"), strings.Contains(p, "/printer"):
+		return "device", "设备"
+	case strings.Contains(p, "/feedback"):
+		return "feedback", "反馈"
+	case strings.Contains(p, "/finance"):
+		return "finance", "财务"
+	case strings.Contains(p, "/client/"):
+		return "client", "客户配置"
 	case strings.Contains(p, "/store") || strings.Contains(p, "/info"):
 		return "store", "门店"
 	case strings.Contains(p, "/product"):
 		return "product", "商品"
 	case strings.Contains(p, "/order"):
 		return "order", "订单"
-	case strings.Contains(p, "/scm"):
-		return "scm", "供应链"
 	default:
 		return "other", "其他"
 	}

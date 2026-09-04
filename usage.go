@@ -11,12 +11,18 @@ import (
 )
 
 const (
-	KindImage   = "image"
-	KindProduct = "product"
-	KindOrder   = "order"
-	KindMember  = "member"
-	KindStore   = "store"
-	KindBytes   = "storage_bytes"
+	KindImage    = "image"
+	KindProduct  = "product"
+	KindOrder    = "order"
+	KindMember   = "member"
+	KindStore    = "store"
+	KindScm      = "scm"
+	KindCampaign = "campaign"
+	KindDevice   = "device"
+	KindFeedback = "feedback"
+	KindClient   = "client"
+	KindFinance  = "finance"
+	KindBytes    = "storage_bytes"
 
 	DefaultUsageTopic   = "tenant.usage"
 	DefaultUsageBrokers = "localhost:19092"
@@ -167,6 +173,18 @@ func usageKindOf(resource string) string {
 		return KindMember
 	case "store":
 		return KindStore
+	case "scm":
+		return KindScm
+	case "campaign":
+		return KindCampaign
+	case "device":
+		return KindDevice
+	case "feedback":
+		return KindFeedback
+	case "client":
+		return KindClient
+	case "finance":
+		return KindFinance
 	default:
 		return ""
 	}
