@@ -2,13 +2,20 @@ package middle
 
 import (
 	"context"
+	"encoding/json"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/open4go/log"
 	"github.com/spf13/viper"
 )
+
+// UsageBytesContextKey is set by handlers that already know the object size
+// (image upload/delete) so occupancy can move storage_bytes, not just count.
+const UsageBytesContextKey = "UsageBytes"
 
 const (
 	KindImage    = "image"
@@ -155,10 +162,105 @@ func UsageFromOperation(resource, action string, respCode int, contentLength int
 		return UsageEvent{}, false
 	}
 	ev := UsageEvent{Kind: kind, Delta: delta}
-	if kind == KindImage && delta > 0 && contentLength > 0 {
-		ev.Bytes = contentLength
+	if kind == KindImage {
+		if n := absInt64(contentLength); n > 0 {
+			ev.Bytes = n
+		}
 	}
 	return ev, true
+}
+
+// SetUsageBytes records the object size on the request so delete/upload
+// occupancy can adjust storage, not only the image counter.
+func SetUsageBytes(c *gin.Context, n int64) {
+	if c == nil {
+		return
+	}
+	if n = absInt64(n); n == 0 {
+		return
+	}
+	c.Set(UsageBytesContextKey, n)
+}
+
+func usageBytes(c *gin.Context, before string, contentLength int64) int64 {
+	if n := contextInt64(c, UsageBytesContextKey); n > 0 {
+		return n
+	}
+	if n := sizeFromJSON(before); n > 0 {
+		return n
+	}
+	return absInt64(contentLength)
+}
+
+func sizeFromJSON(raw string) int64 {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw[0] != '{' {
+		return 0
+	}
+	var m map[string]any
+	if err := json.Unmarshal([]byte(raw), &m); err != nil {
+		return 0
+	}
+	for _, key := range []string{"size", "Size", "bytes", "storage_bytes"} {
+		if n := absInt64(asInt64(m[key])); n > 0 {
+			return n
+		}
+	}
+	return 0
+}
+
+func contextInt64(c *gin.Context, key string) int64 {
+	if c == nil {
+		return 0
+	}
+	v, ok := c.Get(key)
+	if !ok {
+		return 0
+	}
+	return absInt64(asInt64(v))
+}
+
+func asInt64(v any) int64 {
+	switch n := v.(type) {
+	case int:
+		return int64(n)
+	case int32:
+		return int64(n)
+	case int64:
+		return n
+	case uint:
+		return int64(n)
+	case uint32:
+		return int64(n)
+	case uint64:
+		return int64(n)
+	case float32:
+		return int64(n)
+	case float64:
+		return int64(n)
+	case json.Number:
+		i, err := n.Int64()
+		if err == nil {
+			return i
+		}
+		f, err := n.Float64()
+		if err == nil {
+			return int64(f)
+		}
+	case string:
+		i, err := strconv.ParseInt(strings.TrimSpace(n), 10, 64)
+		if err == nil {
+			return i
+		}
+	}
+	return 0
+}
+
+func absInt64(n int64) int64 {
+	if n < 0 {
+		return -n
+	}
+	return n
 }
 
 func usageKindOf(resource string) string {

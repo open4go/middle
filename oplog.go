@@ -177,11 +177,11 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 			WithField("method", fields.method).
 			Warning("write operation log failed")
 	}
-	enqueueUsageFromLog(fields, c.Request.ContentLength)
+	enqueueUsageFromLog(c, fields, c.Request.ContentLength)
 }
 
-func enqueueUsageFromLog(fields operationFields, contentLength int64) {
-	ev, ok := UsageFromOperation(fields.resource, fields.action, fields.respCode, contentLength)
+func enqueueUsageFromLog(c *gin.Context, fields operationFields, contentLength int64) {
+	ev, ok := UsageFromOperation(fields.resource, fields.action, fields.respCode, usageBytes(c, fields.before, contentLength))
 	if !ok {
 		return
 	}
