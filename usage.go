@@ -30,6 +30,9 @@ const (
 	KindClient   = "client"
 	KindFinance  = "finance"
 	KindBytes    = "storage_bytes"
+	KindAI       = "ai"
+	KindAiCalls  = "ai_calls"
+	KindAiTokens = "ai_tokens"
 
 	DefaultUsageTopic   = "tenant.usage"
 	DefaultUsageBrokers = "localhost:19092"

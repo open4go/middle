@@ -82,7 +82,13 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 			return
 		}
 		c.Set("jti", jti)
-		tenantId := c.Request.Header.Get("X-Tenant-ID")
+		tenantId := ""
+		if mid, ok := claims["mid"].(string); ok {
+			tenantId = strings.TrimSpace(mid)
+		}
+		if tenantId == "" {
+			tenantId = c.Request.Header.Get("X-Tenant-ID")
+		}
 		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId)
 		ctx = context.WithValue(ctx, model.AccountKey, accountId)
 		c.Request = c.Request.WithContext(ctx)
