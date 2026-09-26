@@ -186,8 +186,50 @@ func enqueueUsageFromLog(c *gin.Context, fields operationFields, contentLength i
 		return
 	}
 	ev.MerchantID = fields.merchantID
+	if skipUsageMerchant(ev.MerchantID) {
+		if mid := merchantFromBefore(fields.before); mid != "" {
+			ev.MerchantID = mid
+		}
+	}
 	ev.Path = fields.fullPath
 	EnqueueUsage(ev)
+}
+
+func merchantFromBefore(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" || raw[0] != '{' {
+		return ""
+	}
+	var doc map[string]any
+	if err := json.Unmarshal([]byte(raw), &doc); err != nil {
+		return ""
+	}
+	if mid := lookupMerchantID(doc); mid != "" {
+		return mid
+	}
+	if inner, ok := doc["_"].(map[string]any); ok {
+		if mid := lookupMerchantID(inner); mid != "" {
+			return mid
+		}
+	}
+	return ""
+}
+
+func lookupMerchantID(m map[string]any) string {
+	if m == nil {
+		return ""
+	}
+	for _, key := range []string{"merchant_id", "MerchantID"} {
+		if s, ok := m[key].(string); ok {
+			if s = strings.TrimSpace(s); s != "" && !skipUsageMerchant(s) {
+				return s
+			}
+		}
+	}
+	if meta, ok := m["meta"].(map[string]any); ok {
+		return lookupMerchantID(meta)
+	}
+	return ""
 }
 
 type operationFields struct {
@@ -239,6 +281,11 @@ func parseOperationFields(c *gin.Context, l LoginInfo, payload []byte, start tim
 		body.MerchantID,
 		l.Namespace,
 	)
+	if skipUsageMerchant(merchantID) || action == "delete" {
+		if mid := merchantFromBefore(contextString(c, "Before", "OldData")); mid != "" {
+			merchantID = mid
+		}
+	}
 	userAgent := truncateRunes(c.Request.UserAgent(), 240)
 
 	return operationFields{

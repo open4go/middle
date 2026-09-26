@@ -38,6 +38,26 @@ func TestActionFromMethod(t *testing.T) {
 	}
 }
 
+func TestMerchantFromBefore(t *testing.T) {
+	got := merchantFromBefore(`{"_":{"merchant_id":"tenant-a","namespace":"hlj"},"name":"demo"}`)
+	if got != "tenant-a" {
+		t.Fatalf("got %s", got)
+	}
+	if merchantFromBefore(`{"_":{"merchant_id":"*"}}`) != "" {
+		t.Fatal("skip *")
+	}
+	if merchantFromBefore("") != "" {
+		t.Fatal("empty")
+	}
+}
+
+func TestClassifyResourceStoreInfo(t *testing.T) {
+	res, name := ClassifyResource("/v1/hlj/store/info")
+	if res != "store" || name != "门店" {
+		t.Fatalf("got %s %s", res, name)
+	}
+}
+
 func TestActionFromRequest(t *testing.T) {
 	if ActionFromRequest(http.MethodPost, "/v1/hlj/member/account/send/:_id", "") != "notify" {
 		t.Fatal("send")

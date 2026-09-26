@@ -86,9 +86,25 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 		if mid, ok := claims["mid"].(string); ok {
 			tenantId = strings.TrimSpace(mid)
 		}
-		if tenantId == "" {
-			tenantId = c.Request.Header.Get("X-Tenant-ID")
+		if tenantId == "*" {
+			tenantId = ""
 		}
+		headerMid := strings.TrimSpace(c.Request.Header.Get("X-Tenant-ID"))
+		if headerMid == "*" {
+			headerMid = ""
+		}
+		if tenantId != "" && headerMid != "" && tenantId != headerMid {
+			c.JSON(http.StatusForbidden, gin.H{"error": "tenant mismatch"})
+			c.Abort()
+			return
+		}
+		if tenantId == "" {
+			tenantId = headerMid
+		}
+		if tenantId != "" {
+			c.Request.Header.Set("X-Tenant-ID", tenantId)
+		}
+		c.Request.Header.Del("X-Merchant-ID")
 		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId)
 		ctx = context.WithValue(ctx, model.AccountKey, accountId)
 		c.Request = c.Request.WithContext(ctx)
