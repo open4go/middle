@@ -45,7 +45,7 @@ func TestUsageFromOperation(t *testing.T) {
 
 func TestClassifyResourceImage(t *testing.T) {
 	res, name := ClassifyResource("/v1/system/fs/client/image")
-	if res != "image" || name != "图片" {
+	if res != "image" || name != "文件系统 · 图片管理" {
 		t.Fatalf("%s %s", res, name)
 	}
 	res, _ = ClassifyResource("/v1/system/fs/image")
@@ -53,7 +53,7 @@ func TestClassifyResourceImage(t *testing.T) {
 		t.Fatalf("admin image %s", res)
 	}
 	res, name = ClassifyResource("/v1/hlj/scm/material")
-	if res != "scm" || name != "供应链" {
+	if res != "scm" || name != "供应链 · 物料" {
 		t.Fatalf("scm %s %s", res, name)
 	}
 	res, _ = ClassifyResource("/v1/hlj/active/campaign")

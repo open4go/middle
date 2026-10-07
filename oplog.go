@@ -160,6 +160,8 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 	m.After = fields.after
 	m.Summary = BuildOperationSummary(fields.operator, fields.action, fields.resourceLabel, fields.targetID, fields.targetName)
 	m.Resource = fields.resource
+	m.Service = fields.service
+	m.Module = fields.module
 	m.ResourceLabel = fields.resourceLabel
 	m.Action = fields.action
 	m.RequestURI = fields.requestURI
@@ -249,6 +251,8 @@ type operationFields struct {
 	before        string
 	after         string
 	resource      string
+	service       string
+	module        string
 	resourceLabel string
 	action        string
 	requestURI    string
@@ -270,7 +274,8 @@ func parseOperationFields(c *gin.Context, l LoginInfo, payload []byte, start tim
 
 	body := extractBodyFields(payload)
 	targetID, targetName := resolveTarget(c, body)
-	resource, resourceLabel := ClassifyResource(fullPath)
+	class := ClassifyPath(fullPath)
+	resource, resourceLabel := class.Resource, class.Label
 	action := ActionFromRequest(method, fullPath, c.Request.URL.RawQuery)
 	operator := firstNonEmpty(l.UserName, l.Phone, l.AccountID, l.UserID, "unknown")
 	merchantID := firstNonEmpty(
@@ -305,6 +310,8 @@ func parseOperationFields(c *gin.Context, l LoginInfo, payload []byte, start tim
 		before:        contextString(c, "Before", "OldData"),
 		after:         RedactJSON(payload),
 		resource:      resource,
+		service:       class.Service,
+		module:        class.Module,
 		resourceLabel: resourceLabel,
 		action:        action,
 		requestURI:    sanitizeURI(c.Request.URL),
@@ -552,51 +559,15 @@ func completeMeta(meta model.MetaModel, accessLevel uint, success bool, merchant
 	return meta
 }
 
-// ClassifyResource 从请求路径识别业务资源，会员相关路径优先匹配。
+// ClassifyResource 从请求路径识别业务资源。
+// 服务名对应 x9 的应用（client、member、order），模块名是其下的具体功能（launch、account）。
+// 返回的 resource 仍是用量统计用的桶；name 是默认中文「服务 · 模块」。
 func ClassifyResource(path string) (resource, name string) {
-	p := strings.ToLower(path)
-	switch {
-	case strings.Contains(p, "/member/account"):
-		return "member", "会员"
-	case strings.Contains(p, "/member/addresses"), strings.Contains(p, "/addresses"):
-		return "member_address", "会员地址"
-	case strings.Contains(p, "/member/level"), strings.HasSuffix(p, "/level"), strings.Contains(p, "/level/"):
-		return "member_level", "会员等级"
-	case strings.Contains(p, "/member"):
-		return "member", "会员"
-	case strings.Contains(p, "/fs/") || strings.Contains(p, "/client/image"):
-		return "image", "图片"
-	case strings.Contains(p, "/password"):
-		return "password", "密码"
-	case strings.Contains(p, "/auth/account") || strings.HasSuffix(p, "/account") || strings.Contains(p, "/account/"):
-		return "admin_account", "管理账号"
-	case strings.Contains(p, "/role"):
-		return "role", "角色"
-	case strings.Contains(p, "/tenant"):
-		return "tenant", "站点"
-	case strings.Contains(p, "/app"):
-		return "app", "应用"
-	case strings.Contains(p, "/scm"):
-		return "scm", "供应链"
-	case strings.Contains(p, "/active"), strings.Contains(p, "/campaign"), strings.Contains(p, "/coupon"):
-		return "campaign", "营销活动"
-	case strings.Contains(p, "/device"), strings.Contains(p, "/printer"):
-		return "device", "设备"
-	case strings.Contains(p, "/feedback"):
-		return "feedback", "反馈"
-	case strings.Contains(p, "/finance"):
-		return "finance", "财务"
-	case strings.Contains(p, "/client/"):
-		return "client", "客户配置"
-	case strings.Contains(p, "/store") || strings.Contains(p, "/info"):
-		return "store", "门店"
-	case strings.Contains(p, "/product"):
-		return "product", "商品"
-	case strings.Contains(p, "/order"):
-		return "order", "订单"
-	default:
+	class := ClassifyPath(path)
+	if class.Resource == "" {
 		return "other", "其他"
 	}
+	return class.Resource, class.Label
 }
 
 // ActionFromMethod 将 HTTP 方法映射为业务动作。
