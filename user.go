@@ -117,8 +117,30 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 	}
 }
 
-// WriteIntoHeader 从登陆后的头部信息解析登陆信息
+// SuperAdminContextKey 在 gin.Context 中标记“本次请求已通过校验的超管身份”。
+// 仅由 JWTMiddleware（或签发方直接调用的 WriteIntoHeader）根据已校验的登录信息写入，
+// 不读取任何客户端可控的请求头。下游请用 IsSuperAdmin 判断，不要再自行解析 X-Merchant-ID / Host。
+const SuperAdminContextKey = "OPEN4GO_VERIFIED_SUPER_ADMIN"
+
+// IsSuperAdmin 返回当前请求是否为已校验的超管：超管域名 + token 中的 SuperAdmin 标记
+// （或商户号在 super.merchant / super.merchants 中）。未经 JWTMiddleware 校验时总是 false。
+func IsSuperAdmin(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	return c.GetBool(SuperAdminContextKey)
+}
+
+// WriteIntoHeader 把已校验的登录信息写入请求头与 context。
+// 调用方必须保证 l 来自已校验的 token（或签发方自己查库得到的登录信息）。
+// 非超管登录时，商户以 token 中的 MerchantID 为准，客户端传入的 X-Tenant-ID 不能覆盖。
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
+	l.writeIntoHeader(c, true)
+}
+
+// writeIntoHeader verified=false 用于 MerchantBindMiddleware：登录信息来自未经校验的请求头，
+// 不允许切换商户，也不会标记超管。
+func (l *LoginInfo) writeIntoHeader(c *gin.Context, verified bool) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := strings.TrimSpace(c.Request.Header.Get("X-Tenant-ID"))
@@ -133,13 +155,27 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 		WithField("isSuperDomain", isSuperDomain).
 		Debug("before write into each response header")
 
-	allowSwitch := isSuperDomain && canSwitchMerchant(l)
+	allowSwitch := verified && isSuperDomain && canSwitchMerchant(l)
+	c.Set(SuperAdminContextKey, allowSwitch)
+	if verified && !allowSwitch {
+		if jwtMerchant := strings.TrimSpace(l.MerchantID); jwtMerchant != "" && tenantId != jwtMerchant {
+			if tenantId != "" {
+				log.Log(c.Request.Context()).
+					WithField("domain", c.Request.Host).
+					Warning("tenant header ignored: does not match login merchant")
+			}
+			tenantId = jwtMerchant
+			c.Request.Header.Set("X-Tenant-ID", tenantId)
+		}
+	}
 	if switcher != "" && !allowSwitch {
 		log.Log(c.Request.Context()).
 			WithField("domain", c.Request.Host).
 			Warning("merchant switch ignored: not permitted for this login")
 		switcher = ""
-		c.Request.Header.Del("X-Merchant-ID")
+		if verified {
+			c.Request.Header.Del("X-Merchant-ID")
+		}
 	}
 
 	if allowSwitch && switcher != "" {

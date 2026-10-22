@@ -140,8 +140,8 @@ func MerchantBindMiddleware(key []byte) gin.HandlerFunc {
 func bindMerchant(c *gin.Context) int {
 	// Extract claims and load them into LoginInfo struct
 	loginInfo := LoadFromHeader(c)
-	// Write parsed data into the header
-	loginInfo.WriteIntoHeader(c)
+	// 请求头未经校验：只绑定商户，不允许切换商户、不标记超管
+	loginInfo.writeIntoHeader(c, false)
 	return http.StatusOK
 }
 
