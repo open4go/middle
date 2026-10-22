@@ -68,6 +68,7 @@ func TestWriteIntoHeaderUnswitchedSuperAdminKeepsJWTMerchant(t *testing.T) {
 
 func TestWriteIntoHeaderSuperAdminStarSeesAll(t *testing.T) {
 	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{"st"})
 	c := newWriteCtx("super.localhost:8812", map[string]string{"X-Merchant-ID": "*"})
 	login := LoginInfo{MerchantID: "st", Namespace: "hlj"}
 	login.WriteIntoHeader(c)
@@ -85,6 +86,7 @@ func TestWriteIntoHeaderSuperAdminStarSeesAll(t *testing.T) {
 
 func TestWriteIntoHeaderSuperAdminSwitchUsesMerchantHeader(t *testing.T) {
 	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{"st"})
 	c := newWriteCtx("super.localhost:8812", map[string]string{"X-Merchant-ID": "tenant-b"})
 	login := LoginInfo{MerchantID: "st", Namespace: "hlj"}
 	login.WriteIntoHeader(c)
@@ -99,6 +101,9 @@ func TestWriteIntoHeaderSuperAdminSwitchUsesMerchantHeader(t *testing.T) {
 
 func TestWriteIntoHeaderForwardedHostSeesSuper(t *testing.T) {
 	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{"st"})
+	// httptest requests come from 192.0.2.1
+	setViper(t, cfgTrustedProxies, []string{"192.0.2.0/24"})
 	c := newWriteCtx("store-center:9801", map[string]string{
 		"X-Forwarded-Host": "super.localhost:8988",
 		"X-Merchant-ID":    "*",
@@ -125,5 +130,58 @@ func TestWriteIntoHeaderGatewayTenantWins(t *testing.T) {
 	}
 	if got := c.GetHeader("MerchantID"); got != "from-gateway" {
 		t.Fatalf("MerchantID=%q want from-gateway", got)
+	}
+}
+
+func TestWriteIntoHeaderForwardedHostIgnoredFromUntrustedPeer(t *testing.T) {
+	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{"st"})
+	setViper(t, cfgTrustedProxies, []string{})
+	c := newWriteCtx("store-center:9801", map[string]string{
+		"X-Forwarded-Host": "super.localhost:8988",
+		"X-Merchant-ID":    "*",
+	})
+	login := LoginInfo{MerchantID: "st", Namespace: "hlj"}
+	login.WriteIntoHeader(c)
+
+	if got := c.GetHeader("X-Tenant-ID"); got != "st" {
+		t.Fatalf("X-Tenant-ID=%q want st (forwarded host not trusted)", got)
+	}
+	if got := model.GetValueFromCtx(c.Request.Context(), model.NamespaceKey); got != "hlj" {
+		t.Fatalf("NamespaceKey=%q want hlj", got)
+	}
+}
+
+func TestWriteIntoHeaderTenantLoginCannotSwitchOnSuperHost(t *testing.T) {
+	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{"st"})
+	for _, sw := range []string{"*", "tenant-b"} {
+		c := newWriteCtx("super.localhost:8812", map[string]string{"X-Merchant-ID": sw})
+		login := LoginInfo{MerchantID: "tenant-a", Namespace: "hlj"}
+		login.WriteIntoHeader(c)
+
+		if got := c.GetHeader("X-Tenant-ID"); got != "tenant-a" {
+			t.Fatalf("switch %q: X-Tenant-ID=%q want tenant-a", sw, got)
+		}
+		if got := model.GetValueFromCtx(c.Request.Context(), model.MerchantKey); got != "tenant-a" {
+			t.Fatalf("switch %q: MerchantKey=%q want tenant-a", sw, got)
+		}
+		if got := model.GetValueFromCtx(c.Request.Context(), model.NamespaceKey); got != "hlj" {
+			t.Fatalf("switch %q: NamespaceKey=%q want hlj", sw, got)
+		}
+		if got := c.GetHeader("X-Merchant-ID"); got != "" {
+			t.Fatalf("switch %q: X-Merchant-ID should be stripped, got %q", sw, got)
+		}
+	}
+}
+
+func TestWriteIntoHeaderSuperAdminFlagCanSwitch(t *testing.T) {
+	setSuperDomain(t, "super.localhost")
+	setViper(t, cfgSuperMerchants, []string{})
+	c := newWriteCtx("super.localhost", map[string]string{"X-Merchant-ID": "tenant-b"})
+	login := LoginInfo{MerchantID: "ops", Namespace: "hlj", SuperAdmin: true}
+	login.WriteIntoHeader(c)
+	if got := c.GetHeader("X-Tenant-ID"); got != "tenant-b" {
+		t.Fatalf("X-Tenant-ID=%q want tenant-b", got)
 	}
 }

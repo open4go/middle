@@ -3,8 +3,8 @@ package middle
 import (
 	"context"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/open4go/log"
 	"github.com/open4go/model"
 	"net/http"
@@ -106,7 +106,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 		}
 		c.Request.Header.Del("X-Merchant-ID")
 		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
-		ctx = context.WithValue(ctx, model.AccountKey, accountId) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+		ctx = context.WithValue(ctx, model.AccountKey, accountId)                  //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
@@ -121,7 +121,7 @@ func parseToken(tokenString string, jwtSecret []byte) (*jwt.Token, jwt.MapClaims
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return jwtSecret, nil
-	})
+	}, jwt.WithValidMethods(hmacMethods))
 
 	return token, claims, err
 }
