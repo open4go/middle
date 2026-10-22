@@ -36,11 +36,18 @@ type LoginInfo struct {
 	LoginType string `json:"login_type"  bson:"login_type"`
 	// LoginLevel 登陆用户等级
 	LoginLevel string `json:"login_level"  bson:"login_level"`
-	// 用于二次验证权限的接口，如解密手机号等
-	OPTSecret string `json:"os"  bson:"os"`
+	// OPTSecret 二次验证（TOTP）密钥。
+	// 出于安全考虑不再序列化进 JWT（json:"-"）：Dump / DumpLoginInfo 不会输出该字段，
+	// SecondValidateMiddleware 通过 OTPSecretResolver 在服务端获取密钥（默认读 Redis，见 otp.go）。
+	OPTSecret string `json:"-"  bson:"os"`
+	// SuperAdmin 由签发方在超管登录时设置；仅当为 true（或商户号在 super.merchants 中）
+	// 时才允许在超管域名下通过 X-Merchant-ID 切换商户。
+	SuperAdmin bool `json:"sa,omitempty" bson:"sa,omitempty"`
 }
 
-// Dump 登陆信息
+// Dump 登陆信息。
+// 注意：optSecret 参数仅为兼容旧签名而保留，不会写入输出（OPTSecret 不再序列化进 token），
+// 签发方应改为调用 SaveOTPSecret 在服务端保存。
 func (l *LoginInfo) Dump(merchant string,
 	userId string,
 	phone string,
@@ -126,7 +133,16 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 		WithField("isSuperDomain", isSuperDomain).
 		Debug("before write into each response header")
 
-	if isSuperDomain && switcher != "" {
+	allowSwitch := isSuperDomain && canSwitchMerchant(l)
+	if switcher != "" && !allowSwitch {
+		log.Log(c.Request.Context()).
+			WithField("domain", c.Request.Host).
+			Warning("merchant switch ignored: not permitted for this login")
+		switcher = ""
+		c.Request.Header.Del("X-Merchant-ID")
+	}
+
+	if allowSwitch && switcher != "" {
 		if switcher == "*" {
 			tenantId = ""
 			c.Request.Header.Del("X-Tenant-ID")
@@ -165,7 +181,7 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
 
 	// View-all mode: super-admin host and no resolved tenant.
-	if isSuperDomain && merchantKey == "" {
+	if allowSwitch && merchantKey == "" {
 		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
 	}
 	c.Request = c.Request.WithContext(ctx)

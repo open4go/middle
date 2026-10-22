@@ -18,6 +18,15 @@ func setSuperDomain(t *testing.T, domain string) {
 	})
 }
 
+func setViper(t *testing.T, key string, val interface{}) {
+	t.Helper()
+	prev := viper.Get(key)
+	viper.Set(key, val)
+	t.Cleanup(func() {
+		viper.Set(key, prev)
+	})
+}
+
 func TestHostnameOnly(t *testing.T) {
 	cases := []struct {
 		in, want string
@@ -46,15 +55,73 @@ func TestIsSuperAdminHostEmptyConfigNeverMatches(t *testing.T) {
 		"",
 	}
 	for _, h := range hosts {
-		if h == "super.localhost" {
-			continue
-		}
 		if isSuperAdminHost(h) {
 			t.Errorf("empty super.domain must not match host %q", h)
 		}
 	}
-	if !isSuperAdminHost("super.localhost") {
-		t.Fatal("local default super.localhost should match even without super.domain")
+}
+
+func TestIsSuperAdminHostLocalhostRequiresOptIn(t *testing.T) {
+	setSuperDomain(t, "")
+	setViper(t, cfgSuperAllowLocalhost, false)
+	if isSuperAdminHost("super.localhost:8812") {
+		t.Fatal("super.localhost must not match unless super.allowLocalhost is enabled")
+	}
+	setViper(t, cfgSuperAllowLocalhost, true)
+	if !isSuperAdminHost("super.localhost:8812") {
+		t.Fatal("super.localhost should match when super.allowLocalhost=true")
+	}
+	if isSuperAdminHost("admin.localhost") {
+		t.Fatal("allowLocalhost must only enable super.localhost")
+	}
+}
+
+func TestRequestAdminHostForwardedHostNeedsTrustedProxy(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	newCtx := func(remote string) *gin.Context {
+		c, _ := gin.CreateTestContext(httptest.NewRecorder())
+		req := httptest.NewRequest(http.MethodGet, "http://store-center:9801/x", nil)
+		req.RemoteAddr = remote
+		req.Header.Set("X-Forwarded-Host", "super.example.com")
+		req.Header.Set("Origin", "https://super.example.com")
+		c.Request = req
+		return c
+	}
+
+	setViper(t, cfgTrustedProxies, []string{})
+	if got := requestAdminHost(newCtx("203.0.113.9:5555")); got != "store-center:9801" {
+		t.Fatalf("no trusted proxies configured: got %q want Request.Host", got)
+	}
+
+	setViper(t, cfgTrustedProxies, []string{"10.0.0.0/8", "192.168.1.10"})
+	if got := requestAdminHost(newCtx("203.0.113.9:5555")); got != "store-center:9801" {
+		t.Fatalf("untrusted peer: got %q want Request.Host", got)
+	}
+	if got := requestAdminHost(newCtx("10.1.2.3:5555")); got != "super.example.com" {
+		t.Fatalf("trusted CIDR peer: got %q want forwarded host", got)
+	}
+	if got := requestAdminHost(newCtx("192.168.1.10:5555")); got != "super.example.com" {
+		t.Fatalf("trusted IP peer: got %q want forwarded host", got)
+	}
+}
+
+func TestCanSwitchMerchant(t *testing.T) {
+	setViper(t, cfgSuperMerchants, []string{"st"})
+	if !canSwitchMerchant(&LoginInfo{MerchantID: "st"}) {
+		t.Fatal("listed merchant should be allowed")
+	}
+	if !canSwitchMerchant(&LoginInfo{MerchantID: "x", SuperAdmin: true}) {
+		t.Fatal("SuperAdmin flag should be allowed")
+	}
+	if canSwitchMerchant(&LoginInfo{MerchantID: "tenant-a"}) {
+		t.Fatal("ordinary tenant must not switch")
+	}
+	if canSwitchMerchant(&LoginInfo{}) || canSwitchMerchant(nil) {
+		t.Fatal("empty login must not switch")
+	}
+	setViper(t, cfgSuperMerchants, []string{})
+	if canSwitchMerchant(&LoginInfo{MerchantID: "st"}) {
+		t.Fatal("default config must not allow switching")
 	}
 }
 
