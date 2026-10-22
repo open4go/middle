@@ -2,8 +2,8 @@ package middle
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/hex"
-	"math/rand"
 
 	"github.com/gin-gonic/gin"
 	"github.com/open4go/model"
@@ -26,12 +26,12 @@ func CORSMiddleware(host string) gin.HandlerFunc {
 				traceID = s
 			}
 		}
-		ctx := context.WithValue(c.Request.Context(), "traceid", traceID)
+		ctx := context.WithValue(c.Request.Context(), "traceid", traceID) //nolint:staticcheck // SA1029: legacy plain-string key read by open4go/log
 		ip := c.ClientIP()
-		ctx = context.WithValue(ctx, "ip", ip)
+		ctx = context.WithValue(ctx, "ip", ip) //nolint:staticcheck // SA1029: legacy plain-string key read by open4go/log
 
 		if c.Request.Method != "OPTIONS" && isSuperAdminHost(requestAdminHost(c)) {
-			ctx = context.WithValue(ctx, model.NamespaceKey, "*")
+			ctx = context.WithValue(ctx, model.NamespaceKey, "*") //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 		}
 
 		c.Request = c.Request.WithContext(ctx)

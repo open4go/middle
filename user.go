@@ -171,18 +171,18 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("LoginLevel", l.LoginLevel)
 	// 写入context
 	// 在请求上下文中设置值
-	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
-	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
+	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)                //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	merchantKey := tenantId
 	if merchantKey == "*" {
 		merchantKey = ""
 	}
-	ctx = context.WithValue(ctx, model.MerchantKey, merchantKey)
-	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
+	ctx = context.WithValue(ctx, model.MerchantKey, merchantKey) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)    //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 
 	// View-all mode: super-admin host and no resolved tenant.
 	if allowSwitch && merchantKey == "" {
-		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
+		ctx = context.WithValue(ctx, model.NamespaceKey, "*") //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	c.Request = c.Request.WithContext(ctx)
 }

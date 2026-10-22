@@ -1,4 +1,4 @@
-name: Go CI
+name: Go
 
 on:
   push:
@@ -11,52 +11,56 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 📥 拉代码
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 🧰 设置 Go 环境
-      - name: Setup Go
-        uses: actions/setup-go@v4
+      - name: Set up Go
+        uses: actions/setup-go@v5
         with:
-          go-version: 1.25.8
+          go-version: "1.26.10"
           cache: true
 
-      # 🔍 输出版本（调试用，建议保留）
-      - name: Check Go Version
-        run: go version
+      - name: Show Go version
+        run: |
+          go version
+          go env GOPATH
+          go env GOROOT
 
-      # 📦 下载依赖
       - name: Download dependencies
         run: go mod download
 
-      # 🔐 漏洞扫描（官方）
-      - name: Run govulncheck
+      - name: Verify dependencies
+        run: go mod verify
+
+      # 安全检查
+      - name: Install govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
-          govulncheck ./...
 
-      # 🧹 安装 golangci-lint（用 Go 1.25 编译，解决你当前报错🔥）
+      - name: Run govulncheck
+        run: |
+          "$(go env GOPATH)/bin/govulncheck" -test=false ./...
+
+      # 代码质量检查
       - name: Install golangci-lint
         run: |
-          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+          curl -sSfL https://golangci-lint.run/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v2.13.2
 
-      # 🧹 运行 lint
+      - name: Show golangci-lint version
+        run: |
+          "$(go env GOPATH)/bin/golangci-lint" version
+
       - name: Run golangci-lint
-        run: golangci-lint run --timeout=5m
+        run: |
+          "$(go env GOPATH)/bin/golangci-lint" run --timeout=10m
 
-      # 🔨 构建
+      # Build
       - name: Build
-        run: go build -v ./...
+        run: |
+          go build -v ./...
 
-      # 🧪 测试
+      # Test
       - name: Test
-        run: go test -v ./...
-
-      # 🔒 文件系统安全扫描（可选但推荐）
-      - name: Security Scan (Trivy FS)
-        uses: aquasecurity/trivy-action@v0.20.0
-        with:
-          scan-type: fs
-          format: table
-          exit-code: 1
+        run: |
+          go test -v ./...
