@@ -515,16 +515,16 @@ func withLogIdentity(ctx context.Context, l LoginInfo, merchantID string) contex
 		ctx = context.Background()
 	}
 	if l.AccountID != "" {
-		ctx = context.WithValue(ctx, model.AccountKey, l.AccountID)
+		ctx = context.WithValue(ctx, model.AccountKey, l.AccountID) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	if merchantID != "" {
-		ctx = context.WithValue(ctx, model.MerchantKey, merchantID)
+		ctx = context.WithValue(ctx, model.MerchantKey, merchantID) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	if l.Namespace != "" {
-		ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
+		ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	if op := firstNonEmpty(l.UserID, l.AccountID); op != "" {
-		ctx = context.WithValue(ctx, model.OperatorKey, op)
+		ctx = context.WithValue(ctx, model.OperatorKey, op) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	return ctx
 }

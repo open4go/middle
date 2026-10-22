@@ -105,8 +105,8 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 			c.Request.Header.Set("X-Tenant-ID", tenantId)
 		}
 		c.Request.Header.Del("X-Merchant-ID")
-		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId)
-		ctx = context.WithValue(ctx, model.AccountKey, accountId)
+		ctx := context.WithValue(c.Request.Context(), model.MerchantKey, tenantId) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+		ctx = context.WithValue(ctx, model.AccountKey, accountId) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 		c.Request = c.Request.WithContext(ctx)
 		c.Next()
 	}
