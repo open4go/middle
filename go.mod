@@ -72,6 +72,4 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
-replace github.com/open4go/log => ../log
-
 //replace github.com/open4go/auth => ../../open4go/auth
