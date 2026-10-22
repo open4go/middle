@@ -120,8 +120,16 @@ func TestCanSwitchMerchant(t *testing.T) {
 		t.Fatal("empty login must not switch")
 	}
 	setViper(t, cfgSuperMerchants, []string{})
+	setViper(t, cfgSuperMerchant, "")
 	if canSwitchMerchant(&LoginInfo{MerchantID: "st"}) {
 		t.Fatal("default config must not allow switching")
+	}
+	setViper(t, cfgSuperMerchant, "st")
+	if !canSwitchMerchant(&LoginInfo{MerchantID: "st"}) {
+		t.Fatal("legacy single super.merchant should be honoured")
+	}
+	if canSwitchMerchant(&LoginInfo{MerchantID: "tenant-a"}) {
+		t.Fatal("other merchants still denied")
 	}
 }
 

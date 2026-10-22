@@ -13,11 +13,13 @@ import (
 //	super.domain             超管控制台域名（精确匹配，忽略端口与大小写）
 //	super.allowLocalhost     true 时额外把 super.localhost 视为超管域名，仅用于本地开发
 //	super.merchants          允许在超管域名下切换商户（X-Merchant-ID）的登录商户号列表
+//	super.merchant           同上，单个商户号（兼容现有配置）
 //	middle.trustedProxies    受信任的反向代理 IP / CIDR 列表；只有直连对端在列表内时才采用 X-Forwarded-Host
 const (
 	cfgSuperDomain         = "super.domain"
 	cfgSuperAllowLocalhost = "super.allowLocalhost"
 	cfgSuperMerchants      = "super.merchants"
+	cfgSuperMerchant       = "super.merchant"
 	cfgTrustedProxies      = "middle.trustedProxies"
 
 	localSuperHost = "super.localhost"
@@ -116,6 +118,9 @@ func canSwitchMerchant(l *LoginInfo) bool {
 	mid := strings.TrimSpace(l.MerchantID)
 	if mid == "" {
 		return false
+	}
+	if m := strings.TrimSpace(viper.GetString(cfgSuperMerchant)); m != "" && m == mid {
+		return true
 	}
 	for _, m := range viper.GetStringSlice(cfgSuperMerchants) {
 		if strings.TrimSpace(m) == mid {
