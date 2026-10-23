@@ -116,6 +116,7 @@ func checkQuotaRemote(c *gin.Context, merchantID, kind string, extraBytes int64)
 	}
 	req.Header.Set("X-Merchant-ID", merchantID)
 	req.Header.Set("X-Tenant-ID", merchantID)
+	SetGatewayToken(req)
 	if v := c.GetHeader("Authorization"); v != "" {
 		req.Header.Set("Authorization", v)
 	}

@@ -96,8 +96,13 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		if tenantId == "" {
-			tenantId = headerMid
+		if tenantId == "" && headerMid != "" {
+			if trustTenantHeader(c) {
+				tenantId = headerMid
+			} else {
+				log.Log(c.Request.Context()).Warn("tenant header ignored: request not from gateway")
+				c.Request.Header.Del("X-Tenant-ID")
+			}
 		}
 		if tenantId != "" {
 			c.Request.Header.Set("X-Tenant-ID", tenantId)

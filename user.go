@@ -168,6 +168,13 @@ func (l *LoginInfo) writeIntoHeader(c *gin.Context, verified bool) {
 			c.Request.Header.Set("X-Tenant-ID", tenantId)
 		}
 	}
+	if verified && !allowSwitch && strings.TrimSpace(l.MerchantID) == "" && tenantId != "" && !trustTenantHeader(c) {
+		log.Log(c.Request.Context()).
+			WithField("domain", c.Request.Host).
+			Warning("tenant header ignored: request not from gateway")
+		tenantId = ""
+		c.Request.Header.Del("X-Tenant-ID")
+	}
 	if switcher != "" && !allowSwitch {
 		log.Log(c.Request.Context()).
 			WithField("domain", c.Request.Host).
