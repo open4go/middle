@@ -64,8 +64,8 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Retrieve JWT token from the "jwt" cookie
 	cookie, err := c.Cookie("jwt")
 	if err != nil || cookie == "" {
-		log.Log(c.Request.Context()).
-			WithError(err).Error("Failed to retrieve JWT token from cookie")
+		// 未登录是正常的 401 路径，api-end 已记录状态码，这里只在 debug 级别输出
+		log.Log(c.Request.Context()).Debug("jwt cookie missing")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -73,7 +73,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Parse JWT token with claims
 	token, err := parseJWTToken(cookie, key)
 	if err != nil {
-		log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
+		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -81,7 +81,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Extract claims and load them into LoginInfo struct
 	loginInfo, err := extractClaims(token)
 	if err != nil {
-		log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
+		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -161,8 +161,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Retrieve JWT token from the "jwt" cookie
 		cookie, err := c.Cookie("jwt")
 		if err != nil || cookie == "" {
-			log.Log(c.Request.Context()).
-				WithError(err).Error("Failed to retrieve JWT token from cookie")
+			log.Log(c.Request.Context()).Debug("jwt cookie missing")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -170,7 +169,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Parse JWT token with claims
 		token, err := parseJWTToken(cookie, key)
 		if err != nil {
-			log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
+			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -178,7 +177,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Extract claims and load them into LoginInfo struct
 		loginInfo, err := extractClaims(token)
 		if err != nil {
-			log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
+			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -195,7 +194,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 			return
 		}
 		if !totp.Validate(code, secret) {
-			log.Log(c.Request.Context()).Error("failed to validate totp code")
+			log.Log(c.Request.Context()).Warn("totp code rejected")
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

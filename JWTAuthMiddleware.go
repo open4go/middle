@@ -17,7 +17,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			log.Log(c.Request.Context()).Error("authorization header is required")
+			log.Log(c.Request.Context()).Debug("authorization header is required")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header is required"})
 			c.Abort()
 			return
@@ -25,8 +25,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		parts := strings.SplitN(authHeader, " ", 2)
 		if len(parts) != 2 || parts[0] != "Bearer" {
-			log.Log(c.Request.Context()).WithField("authHeader", authHeader).
-				Error("authorization header is required")
+			log.Log(c.Request.Context()).Warn("authorization header is not a Bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "authorization header format must be Bearer {token}"})
 			c.Abort()
 			return
@@ -37,8 +36,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 		token, claims, err := parseToken(tokenString, jwtSecret)
 		if err != nil || !token.Valid {
 			// invalid token
-			log.Log(c.Request.Context()).WithField("authHeader", authHeader).
-				Error(err)
+			log.Log(c.Request.Context()).WithError(err).Warn("invalid bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 			c.Abort()
 			return
@@ -49,7 +47,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		accountId, ok := claims["sub"].(string)
 		if !ok || accountId == "" {
-			log.Log(c.Request.Context()).Error("accountId not found")
+			log.Log(c.Request.Context()).Warn("accountId not found in bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
 			c.Abort()
 			return
@@ -58,7 +56,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		iss, ok := claims["iss"].(string)
 		if !ok {
-			log.Log(c.Request.Context()).Error("iss not found")
+			log.Log(c.Request.Context()).Warn("iss not found in bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
 			c.Abort()
 			return
@@ -67,7 +65,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		aud, ok := claims["aud"].(string)
 		if !ok {
-			log.Log(c.Request.Context()).Error("aud not found")
+			log.Log(c.Request.Context()).Warn("aud not found in bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
 			c.Abort()
 			return
@@ -76,7 +74,7 @@ func JWTAuthMiddleware(jwtSecret []byte) gin.HandlerFunc {
 
 		jti, ok := claims["jti"].(string)
 		if !ok {
-			log.Log(c.Request.Context()).Error("jti not found")
+			log.Log(c.Request.Context()).Warn("jti not found in bearer token")
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token subject"})
 			c.Abort()
 			return
