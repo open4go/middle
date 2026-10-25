@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/open4go/db v0.0.13
-	github.com/open4go/log v0.0.28-0.20261025025315-a83ec9084afc
+	github.com/open4go/log v0.0.28
 	github.com/open4go/model v0.0.20
 	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
