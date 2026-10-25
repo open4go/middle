@@ -54,13 +54,17 @@ func saveLoginLog(c *gin.Context, db *mongo.Database, payload []byte) {
 
 	m := &login.Model{}
 	m.ID = primitive.NewObjectID()
+	remoteIP := clientRemoteIP(c)
 	m.ClientIP = c.ClientIP()
-	m.RemoteIP = clientRemoteIP(c)
+	m.RemoteIP = remoteIP
+	m.IPLocation = LocateIPZH(remoteIP)
+	m.Client, m.ClientVersion = ResolveClient(c)
+	m.DeviceID = truncateRunes(firstNonEmpty(c.GetHeader("X-Device-ID"), c.GetHeader("X-Device-Id")), 128)
 	m.FullPath = fullPath
 	m.Method = c.Request.Method
 	m.RespCode = c.Writer.Status()
 	m.TargetID = firstNonEmpty(userID, accountID, phone)
-	m.Device = firstNonEmpty(c.GetHeader("X-Device-ID"), c.GetHeader("X-Device-Id"), truncateRunes(userAgent, 180))
+	m.Device = ParseDeviceZH(c.Request.UserAgent())
 	m.LogType = logType
 	m.UserID = userID
 	m.AccountID = accountID

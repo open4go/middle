@@ -169,6 +169,10 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 	m.MerchantID = fields.merchantID
 	m.LatencyMs = fields.latencyMs
 	m.TraceID = fields.traceID
+	m.Client = fields.client
+	m.ClientVersion = fields.clientVersion
+	m.DeviceID = fields.deviceID
+	m.IPLocation = fields.ipLocation
 
 	ctx := withLogIdentity(c.Request.Context(), l, fields.merchantID)
 	handler := m.Init(ctx, db, m.CollectionName())
@@ -260,6 +264,10 @@ type operationFields struct {
 	merchantID    string
 	namespace     string
 	traceID       string
+	client        string
+	clientVersion string
+	deviceID      string
+	ipLocation    string
 	latencyMs     int64
 	accessLevel   uint
 }
@@ -292,16 +300,22 @@ func parseOperationFields(c *gin.Context, l LoginInfo, payload []byte, start tim
 		}
 	}
 	userAgent := truncateRunes(c.Request.UserAgent(), 240)
+	client, clientVersion := ResolveClient(c)
+	remoteIP := clientRemoteIP(c)
 
 	return operationFields{
 		clientIP:      c.ClientIP(),
-		remoteIP:      clientRemoteIP(c),
+		remoteIP:      remoteIP,
+		client:        client,
+		clientVersion: clientVersion,
+		deviceID:      truncateRunes(firstNonEmpty(c.GetHeader("X-Device-ID"), c.GetHeader("X-Device-Id")), 128),
+		ipLocation:    LocateIPZH(remoteIP),
 		fullPath:      fullPath,
 		method:        method,
 		respCode:      c.Writer.Status(),
 		targetID:      targetID,
 		targetName:    targetName,
-		device:        firstNonEmpty(c.GetHeader("X-Device-ID"), c.GetHeader("X-Device-Id"), truncateRunes(userAgent, 180)),
+		device:        ParseDeviceZH(c.Request.UserAgent()),
 		operator:      operator,
 		operatorPhone: l.Phone,
 		loginType:     l.LoginType,
@@ -447,16 +461,6 @@ func stringify(v interface{}) string {
 	default:
 		return ""
 	}
-}
-
-func clientRemoteIP(c *gin.Context) string {
-	if v := c.Request.Header.Get("X-Real-IP"); v != "" {
-		return strings.TrimSpace(strings.Split(v, ",")[0])
-	}
-	if v := c.Request.Header.Get("X-Forwarded-For"); v != "" {
-		return strings.TrimSpace(strings.Split(v, ",")[0])
-	}
-	return c.ClientIP()
 }
 
 func firstNonEmpty(values ...string) string {
