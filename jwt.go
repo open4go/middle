@@ -1,13 +1,15 @@
 package middle
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"github.com/dgrijalva/jwt-go"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/open4go/log"
 	"github.com/pquerna/otp/totp"
-	"net/http"
 )
 
 const (
@@ -21,28 +23,49 @@ const (
 // 通过hget api/path/ role boolean
 func JWTMiddleware(key []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		reqPath := c.FullPath()
-		if reqPath == SignOutPath {
-			if checkAuth(c, key) != http.StatusOK {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
-		} else {
-			if checkAuth(c, key) != http.StatusOK {
-				c.AbortWithStatus(http.StatusForbidden)
-				return
-			}
+		if checkAuth(c, key) != http.StatusOK {
+			// checkAuth 已经 Abort 并写入 401，这里不再重复写状态码
+			return
 		}
 		c.Next()
 	}
+}
+
+// VerifiedUserIDKey 是 JWTMiddleware 校验 token 成功后写入 gin.Context（c.Set）与
+// request context 的键，值为 token 中的 UserID。下游（如 open4go/auth）应以此作为调用者身份，
+// 而不是读取可被客户端伪造的请求头。
+const VerifiedUserIDKey = "OPEN4GO_VERIFIED_USER_ID"
+
+// VerifiedUserID 返回 JWTMiddleware 校验后的 UserID；未经校验时返回 ""。
+func VerifiedUserID(c *gin.Context) string {
+	if c == nil {
+		return ""
+	}
+	if v, ok := c.Get(VerifiedUserIDKey); ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	if c.Request != nil {
+		if s, ok := c.Request.Context().Value(VerifiedUserIDKey).(string); ok {
+			return s
+		}
+	}
+	return ""
+}
+
+func setVerifiedUserID(c *gin.Context, uid string) {
+	c.Set(VerifiedUserIDKey, uid)
+	//nolint:staticcheck // 与 open4go/model 的字符串 context key 约定保持一致
+	c.Request = c.Request.WithContext(context.WithValue(c.Request.Context(), VerifiedUserIDKey, uid))
 }
 
 func checkAuth(c *gin.Context, key []byte) int {
 	// Retrieve JWT token from the "jwt" cookie
 	cookie, err := c.Cookie("jwt")
 	if err != nil || cookie == "" {
-		log.Log(c.Request.Context()).
-			WithError(err).Error("Failed to retrieve JWT token from cookie")
+		// 未登录是正常的 401 路径，api-end 已记录状态码，这里只在 debug 级别输出
+		log.Log(c.Request.Context()).Debug("jwt cookie missing")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -50,7 +73,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Parse JWT token with claims
 	token, err := parseJWTToken(cookie, key)
 	if err != nil {
-		log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
+		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
@@ -58,28 +81,41 @@ func checkAuth(c *gin.Context, key []byte) int {
 	// Extract claims and load them into LoginInfo struct
 	loginInfo, err := extractClaims(token)
 	if err != nil {
-		log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
+		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return http.StatusUnauthorized
 	}
 
 	// Write parsed data into the header
 	loginInfo.WriteIntoHeader(c)
+	setVerifiedUserID(c, loginInfo.UserID)
 
 	return http.StatusOK
 }
 
+var hmacMethods = []string{
+	jwt.SigningMethodHS256.Alg(),
+	jwt.SigningMethodHS384.Alg(),
+	jwt.SigningMethodHS512.Alg(),
+}
+
 func parseJWTToken(cookie string, key []byte) (*jwt.Token, error) {
-	return jwt.ParseWithClaims(cookie, &jwt.StandardClaims{}, func(token *jwt.Token) (interface{}, error) {
+	if len(key) == 0 {
+		return nil, errors.New("jwt: empty signing key")
+	}
+	return jwt.ParseWithClaims(cookie, &jwt.RegisteredClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return key, nil
-	})
+	}, jwt.WithValidMethods(hmacMethods))
 }
 
 func extractClaims(token *jwt.Token) (*LoginInfo, error) {
-	claims, ok := token.Claims.(*jwt.StandardClaims)
+	if token == nil || !token.Valid {
+		return nil, errors.New("invalid token")
+	}
+	claims, ok := token.Claims.(*jwt.RegisteredClaims)
 	if !ok {
 		return nil, errors.New("invalid token claims")
 	}
@@ -104,8 +140,8 @@ func MerchantBindMiddleware(key []byte) gin.HandlerFunc {
 func bindMerchant(c *gin.Context) int {
 	// Extract claims and load them into LoginInfo struct
 	loginInfo := LoadFromHeader(c)
-	// Write parsed data into the header
-	loginInfo.WriteIntoHeader(c)
+	// 请求头未经校验：只绑定商户，不允许切换商户、不标记超管
+	loginInfo.writeIntoHeader(c, false)
 	return http.StatusOK
 }
 
@@ -125,8 +161,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Retrieve JWT token from the "jwt" cookie
 		cookie, err := c.Cookie("jwt")
 		if err != nil || cookie == "" {
-			log.Log(c.Request.Context()).
-				WithError(err).Error("Failed to retrieve JWT token from cookie")
+			log.Log(c.Request.Context()).Debug("jwt cookie missing")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -134,7 +169,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Parse JWT token with claims
 		token, err := parseJWTToken(cookie, key)
 		if err != nil {
-			log.Log(c.Request.Context()).WithError(err).Error("Failed to parse JWT token")
+			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
@@ -142,15 +177,24 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		// Extract claims and load them into LoginInfo struct
 		loginInfo, err := extractClaims(token)
 		if err != nil {
-			log.Log(c.Request.Context()).WithError(err).Error("Failed to extract claims")
+			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
 			c.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
 
-		// 二次验证
-		b := totp.Validate(code, loginInfo.OPTSecret)
-		if !b {
-			log.Log(c.Request.Context()).WithError(err).Error("failed to validate")
+		// 二次验证：密钥从服务端获取，不再信任 token 内容
+		issuer := ""
+		if rc, ok := token.Claims.(*jwt.RegisteredClaims); ok {
+			issuer = rc.Issuer
+		}
+		secret, err := resolveOTPSecret(c.Request.Context(), loginInfo, issuer)
+		if err != nil || secret == "" {
+			log.Log(c.Request.Context()).WithError(err).Error("otp secret unavailable")
+			c.AbortWithStatus(http.StatusForbidden)
+			return
+		}
+		if !totp.Validate(code, secret) {
+			log.Log(c.Request.Context()).Warn("totp code rejected")
 			c.AbortWithStatus(http.StatusForbidden)
 			return
 		}

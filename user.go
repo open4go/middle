@@ -36,11 +36,18 @@ type LoginInfo struct {
 	LoginType string `json:"login_type"  bson:"login_type"`
 	// LoginLevel 登陆用户等级
 	LoginLevel string `json:"login_level"  bson:"login_level"`
-	// 用于二次验证权限的接口，如解密手机号等
-	OPTSecret string `json:"os"  bson:"os"`
+	// OPTSecret 二次验证（TOTP）密钥。
+	// 出于安全考虑不再序列化进 JWT（json:"-"）：Dump / DumpLoginInfo 不会输出该字段，
+	// SecondValidateMiddleware 通过 OTPSecretResolver 在服务端获取密钥（默认读 Redis，见 otp.go）。
+	OPTSecret string `json:"-"  bson:"os"`
+	// SuperAdmin 由签发方在超管登录时设置；仅当为 true（或商户号在 super.merchants 中）
+	// 时才允许在超管域名下通过 X-Merchant-ID 切换商户。
+	SuperAdmin bool `json:"sa,omitempty" bson:"sa,omitempty"`
 }
 
-// Dump 登陆信息
+// Dump 登陆信息。
+// 注意：optSecret 参数仅为兼容旧签名而保留，不会写入输出（OPTSecret 不再序列化进 token），
+// 签发方应改为调用 SaveOTPSecret 在服务端保存。
 func (l *LoginInfo) Dump(merchant string,
 	userId string,
 	phone string,
@@ -110,8 +117,30 @@ func LoadFromHeader(c *gin.Context) LoginInfo {
 	}
 }
 
-// WriteIntoHeader 从登陆后的头部信息解析登陆信息
+// SuperAdminContextKey 在 gin.Context 中标记“本次请求已通过校验的超管身份”。
+// 仅由 JWTMiddleware（或签发方直接调用的 WriteIntoHeader）根据已校验的登录信息写入，
+// 不读取任何客户端可控的请求头。下游请用 IsSuperAdmin 判断，不要再自行解析 X-Merchant-ID / Host。
+const SuperAdminContextKey = "OPEN4GO_VERIFIED_SUPER_ADMIN"
+
+// IsSuperAdmin 返回当前请求是否为已校验的超管：超管域名 + token 中的 SuperAdmin 标记
+// （或商户号在 super.merchant / super.merchants 中）。未经 JWTMiddleware 校验时总是 false。
+func IsSuperAdmin(c *gin.Context) bool {
+	if c == nil {
+		return false
+	}
+	return c.GetBool(SuperAdminContextKey)
+}
+
+// WriteIntoHeader 把已校验的登录信息写入请求头与 context。
+// 调用方必须保证 l 来自已校验的 token（或签发方自己查库得到的登录信息）。
+// 非超管登录时，商户以 token 中的 MerchantID 为准，客户端传入的 X-Tenant-ID 不能覆盖。
 func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
+	l.writeIntoHeader(c, true)
+}
+
+// writeIntoHeader verified=false 用于 MerchantBindMiddleware：登录信息来自未经校验的请求头，
+// 不允许切换商户，也不会标记超管。
+func (l *LoginInfo) writeIntoHeader(c *gin.Context, verified bool) {
 	c.Request.Header.Set("Namespace", l.Namespace)
 
 	tenantId := strings.TrimSpace(c.Request.Header.Get("X-Tenant-ID"))
@@ -126,7 +155,37 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 		WithField("isSuperDomain", isSuperDomain).
 		Debug("before write into each response header")
 
-	if isSuperDomain && switcher != "" {
+	allowSwitch := verified && isSuperDomain && canSwitchMerchant(l)
+	c.Set(SuperAdminContextKey, allowSwitch)
+	if verified && !allowSwitch {
+		if jwtMerchant := strings.TrimSpace(l.MerchantID); jwtMerchant != "" && tenantId != jwtMerchant {
+			if tenantId != "" {
+				log.Log(c.Request.Context()).
+					WithField("domain", c.Request.Host).
+					Warning("tenant header ignored: does not match login merchant")
+			}
+			tenantId = jwtMerchant
+			c.Request.Header.Set("X-Tenant-ID", tenantId)
+		}
+	}
+	if verified && !allowSwitch && strings.TrimSpace(l.MerchantID) == "" && tenantId != "" && !trustTenantHeader(c) {
+		log.Log(c.Request.Context()).
+			WithField("domain", c.Request.Host).
+			Warning("tenant header ignored: request not from gateway")
+		tenantId = ""
+		c.Request.Header.Del("X-Tenant-ID")
+	}
+	if switcher != "" && !allowSwitch {
+		log.Log(c.Request.Context()).
+			WithField("domain", c.Request.Host).
+			Warning("merchant switch ignored: not permitted for this login")
+		switcher = ""
+		if verified {
+			c.Request.Header.Del("X-Merchant-ID")
+		}
+	}
+
+	if allowSwitch && switcher != "" {
 		if switcher == "*" {
 			tenantId = ""
 			c.Request.Header.Del("X-Tenant-ID")
@@ -155,18 +214,18 @@ func (l *LoginInfo) WriteIntoHeader(c *gin.Context) {
 	c.Request.Header.Set("LoginLevel", l.LoginLevel)
 	// 写入context
 	// 在请求上下文中设置值
-	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID)
-	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)
+	ctx := context.WithValue(c.Request.Context(), model.AccountKey, l.AccountID) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+	ctx = context.WithValue(ctx, model.NamespaceKey, l.Namespace)                //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	merchantKey := tenantId
 	if merchantKey == "*" {
 		merchantKey = ""
 	}
-	ctx = context.WithValue(ctx, model.MerchantKey, merchantKey)
-	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)
+	ctx = context.WithValue(ctx, model.MerchantKey, merchantKey) //nolint:staticcheck // SA1029: key type is fixed by open4go/model
+	ctx = context.WithValue(ctx, model.OperatorKey, l.UserID)    //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 
 	// View-all mode: super-admin host and no resolved tenant.
-	if isSuperDomain && merchantKey == "" {
-		ctx = context.WithValue(ctx, model.NamespaceKey, "*")
+	if allowSwitch && merchantKey == "" {
+		ctx = context.WithValue(ctx, model.NamespaceKey, "*") //nolint:staticcheck // SA1029: key type is fixed by open4go/model
 	}
 	c.Request = c.Request.WithContext(ctx)
 }
