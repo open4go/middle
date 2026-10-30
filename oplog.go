@@ -156,8 +156,9 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 	m.UserID = fields.userID
 	m.AccountID = fields.accountID
 	m.Timestamp = uint64(now.Unix())
-	m.Before = fields.before
-	m.After = fields.after
+	before, after := CompressAuditBodies(fields.action, fields.before, fields.after)
+	m.Before = before
+	m.After = after
 	m.Summary = BuildOperationSummary(fields.operator, fields.action, fields.resourceLabel, fields.targetID, fields.targetName)
 	m.Resource = fields.resource
 	m.Service = fields.service
@@ -177,11 +178,14 @@ func saveOperationLog(c *gin.Context, db *mongo.Database, payload []byte, start 
 	ctx := withLogIdentity(c.Request.Context(), l, fields.merchantID)
 	handler := m.Init(ctx, db, m.CollectionName())
 	m.Meta = completeMeta(handler.GetMeta(), fields.accessLevel, fields.respCode < 400, fields.merchantID, fields.accountID, fields.namespace, firstNonEmpty(fields.userID, fields.accountID))
-	if _, err := handler.Context.Handler.Collection(handler.Context.Collection).InsertOne(ctx, m); err != nil {
-		log.Log(ctx).WithError(err).
-			WithField("path", fields.fullPath).
-			WithField("method", fields.method).
-			Warning("write operation log failed")
+
+	// P1: enqueue to Kafka when async publisher is ready; otherwise sync InsertOne.
+	// Critical resources sync-fallback when the local queue is full so we do not lose them.
+	enqueued := EnqueueAudit(m)
+	if !enqueued {
+		if !AuditAsyncReady() || IsCriticalAudit(fields.resource, fields.action) {
+			insertOperationSync(ctx, db, m)
+		}
 	}
 	enqueueUsageFromLog(c, fields, c.Request.ContentLength)
 }
