@@ -11,7 +11,7 @@ require (
 	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
 	github.com/redis/go-redis/v9 v9.7.3
-	github.com/segmentio/kafka-go v0.4.49
+	github.com/segmentio/kafka-go v0.4.51
 	github.com/spf13/viper v1.12.0
 	go.mongodb.org/mongo-driver v1.17.7
 )
