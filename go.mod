@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/open4go/db v0.0.13
 	github.com/open4go/log v0.0.28
-	github.com/open4go/model v0.0.20
+	github.com/open4go/model v0.0.26
 	github.com/pquerna/otp v1.5.0
 	github.com/r2day/base v1.6.7
 	github.com/redis/go-redis/v9 v9.7.3
