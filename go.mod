@@ -5,7 +5,7 @@ go 1.26.10
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
-	github.com/open4go/db v0.0.13
+	github.com/open4go/db v0.0.17
 	github.com/open4go/log v0.0.28
 	github.com/open4go/model v0.0.20
 	github.com/pquerna/otp v1.5.0
