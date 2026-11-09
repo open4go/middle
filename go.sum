@@ -199,8 +199,8 @@ github.com/montanaflynn/stats v0.7.1 h1:etflOAAHORrCC44V+aR6Ftzort912ZU+YLiSTuV8
 github.com/montanaflynn/stats v0.7.1/go.mod h1:etXPPgVO6n31NxCd9KQUMvCM+ve0ruNzt6R8Bnaayow=
 github.com/open4go/db v0.0.17 h1:nrBLQVMj5lHnUUl5U6okCsQnf6VC1/s9wAF1AorxCJU=
 github.com/open4go/db v0.0.17/go.mod h1:Xlv3HZUzbPV0okX4mtdQ/LB5s/1cqqoFeOFu3VBtFeg=
-github.com/open4go/log v0.0.28 h1:KR/Z46hgDiD8OePLuujDby30WY+D8O/1gbNcLX7Ba3U=
-github.com/open4go/log v0.0.28/go.mod h1:GYLRNcow50ghW0NHIVLTjjUXL8XYUCmXQHa7/3nJk3w=
+github.com/open4go/log v0.0.31 h1:W+AuDp+/JhxIGzk43oE75/P9NIPXL03htgsxbNtm2bo=
+github.com/open4go/log v0.0.31/go.mod h1:GYLRNcow50ghW0NHIVLTjjUXL8XYUCmXQHa7/3nJk3w=
 github.com/open4go/model v0.0.26 h1:91cPvq9/XRk2HI3z7r0Q6OkxbIJNjMYojqENlreXC8M=
 github.com/open4go/model v0.0.26/go.mod h1:0+WA6d6vIqc/rskapGAD+8e/7Qr7godBKxc3cUVNDIc=
 github.com/open4go/r3time v0.0.6 h1:Kx8zaU6gMEr+3Gu3vVMc8BXdnisNfD4cOpAngw1jNTQ=
