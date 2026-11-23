@@ -16,7 +16,6 @@ import (
 	"github.com/open4go/log"
 	"github.com/open4go/log/model/operation"
 	"github.com/open4go/model"
-	rtime "github.com/r2day/base/time"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 )
@@ -559,7 +558,7 @@ func completeMeta(meta model.MetaModel, accessLevel uint, success bool, merchant
 	}
 	if meta.CreatedAt == "" {
 		now := time.Now().Unix()
-		meta.CreatedAt = rtime.FomratTimeAsReader(now)
+		meta.CreatedAt = time.Unix(now, 0).Format(time.DateTime)
 		meta.UpdatedAt = meta.CreatedAt
 		meta.CreatedTime = now
 		meta.UpdatedTime = now

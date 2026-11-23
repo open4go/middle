@@ -1,15 +1,14 @@
 module github.com/open4go/middle
 
-go 1.26.10
+go 1.26.11
 
 require (
 	github.com/gin-gonic/gin v1.9.1
 	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/open4go/db v0.0.17
-	github.com/open4go/log v0.0.28
-	github.com/open4go/model v0.0.26
+	github.com/open4go/log v0.0.34
+	github.com/open4go/model v0.0.27
 	github.com/pquerna/otp v1.5.0
-	github.com/r2day/base v1.6.7
 	github.com/redis/go-redis/v9 v9.23.0
 	github.com/segmentio/kafka-go v0.4.51
 	github.com/spf13/viper v1.12.0
