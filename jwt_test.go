@@ -123,6 +123,14 @@ func TestJWTMiddlewareRejects(t *testing.T) {
 		if w.Code != http.StatusUnauthorized {
 			t.Errorf("%s: code=%d want 401", name, w.Code)
 		}
+		var body map[string]string
+		if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+			t.Errorf("%s: body not json: %q", name, w.Body.String())
+			continue
+		}
+		if body["code"] != CodeSessionExpired || body["message"] != MsgSessionExpired {
+			t.Errorf("%s: body=%v want code=session_expired", name, body)
+		}
 	}
 }
 

@@ -24,7 +24,7 @@ const (
 func JWTMiddleware(key []byte) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if checkAuth(c, key) != http.StatusOK {
-			// checkAuth 已经 Abort 并写入 401，这里不再重复写状态码
+			// checkAuth 已经 Abort 并写入 401 {code:"session_expired"}，这里不再重复写
 			return
 		}
 		c.Next()
@@ -66,7 +66,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	if err != nil || cookie == "" {
 		// 未登录是正常的 401 路径，api-end 已记录状态码，这里只在 debug 级别输出
 		log.Log(c.Request.Context()).Debug("jwt cookie missing")
-		c.AbortWithStatus(http.StatusUnauthorized)
+		AbortSessionExpired(c)
 		return http.StatusUnauthorized
 	}
 
@@ -74,7 +74,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	token, err := parseJWTToken(cookie, key)
 	if err != nil {
 		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
-		c.AbortWithStatus(http.StatusUnauthorized)
+		AbortSessionExpired(c)
 		return http.StatusUnauthorized
 	}
 
@@ -82,7 +82,7 @@ func checkAuth(c *gin.Context, key []byte) int {
 	loginInfo, err := extractClaims(token)
 	if err != nil {
 		log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
-		c.AbortWithStatus(http.StatusUnauthorized)
+		AbortSessionExpired(c)
 		return http.StatusUnauthorized
 	}
 
@@ -162,7 +162,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		cookie, err := c.Cookie("jwt")
 		if err != nil || cookie == "" {
 			log.Log(c.Request.Context()).Debug("jwt cookie missing")
-			c.AbortWithStatus(http.StatusUnauthorized)
+			AbortSessionExpired(c)
 			return
 		}
 
@@ -170,7 +170,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		token, err := parseJWTToken(cookie, key)
 		if err != nil {
 			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt cookie")
-			c.AbortWithStatus(http.StatusUnauthorized)
+			AbortSessionExpired(c)
 			return
 		}
 
@@ -178,7 +178,7 @@ func SecondValidateMiddleware(key []byte) gin.HandlerFunc {
 		loginInfo, err := extractClaims(token)
 		if err != nil {
 			log.Log(c.Request.Context()).WithError(err).Warn("invalid jwt claims")
-			c.AbortWithStatus(http.StatusUnauthorized)
+			AbortSessionExpired(c)
 			return
 		}
 
