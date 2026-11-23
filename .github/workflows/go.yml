@@ -9,6 +9,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # github.com/r2day/base 与 github.com/r2day/rest 的源仓库已不在 GitHub，proxy.golang.org 返回 404；
+      # 回退到仍缓存这些版本的 goproxy.cn（go.sum 校验内容不变）。
+      GOPROXY: https://proxy.golang.org,https://goproxy.cn,direct
 
     steps:
       - name: Checkout
